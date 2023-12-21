@@ -79,9 +79,9 @@
 
 
 local appName = "F3F Tool"
-local appVersion = "1.41"
+local appVersion = "2.0"
 
-local dataDirRel = "f3fTool-141"        -- data dir (relative path)
+local dataDirRel = "f3fTool-20"        -- data dir (relative path)
 local dataDir = "Apps/" .. dataDirRel   -- data dir (abs. path)
 
 -- ===============================================================================================
@@ -101,11 +101,12 @@ local globalVar = {
 }
 
 local errorTable = {
-  {"Sensors", "not", "configured"},              -- 1
-  {"Sensors", "not", "active"},                  -- 2
-  {"Speedsensor", "not", "active"},              -- 3
-  {"Slope", "not", "configured"},                -- 4 
-  {"waiting", "for", "GPS-ready"}                -- 5
+  {"Sensors", "not", "configured"},                -- 1
+  {"Sensors", "not", "active"},                    -- 2
+  {"Speedsensor", "not", "active"},                -- 3
+  {"Slope", "not", "configured"},                  -- 4 
+  {"waiting", "for", "GPS-ready"},                 -- 5
+  {"F3F-Tool V. " .. appVersion , "", "not for Gen1 TX"}  -- 6
 }
 
 -- Object pointer
@@ -795,7 +796,7 @@ function display:printFlightInfo (width, height)
 
   -- prior to first run: show splash screen and course information
   --  if (f3fRun.curStatus==f3fRun.status.INIT) then
-  if (f3fRun.curStatus==1) then
+  if ( f3fRun and f3fRun.curStatus==1) then
 
     lcd.drawText(14,-1, "F3F",FONT_MAXI)  
     lcd.drawText(6,28, "Tool",FONT_MAXI)  
@@ -862,6 +863,20 @@ local function init()
   -- cleanup
   collectgarbage("collect") 
 
+  -- register display first ( maybe needed for error message)
+  system.registerTelemetry(1, appName .. " - Vers. " .. appVersion, 2,
+      function ( width, height ) display:printFlightInfo ( width, height ) end )
+
+   -- check device type, this Version does not run on generation 1 hardware (monochrome display)
+   local monoDev = {"JETI DC-16", "JETI DS-16", "JETI DC-14", "JETI DS-14"}
+   local dev = system.getDeviceType()
+   for _,v in ipairs(monoDev) do
+      if dev == v then    
+        globalVar.errorStatus = 6
+        return
+      end
+   end
+
   -- intialize objects
   slope:init ()        -- the slope
   gpsSensor:init ()    -- the gps sensor
@@ -886,9 +901,6 @@ local function init()
       function () slopeManager:printSlopeForm () end,
       function () slopeManager:closeSlopeForm () end )
   
-  -- register displays
-  system.registerTelemetry(1, appName .. " - Vers. " .. appVersion, 2,
-      function ( width, height ) display:printFlightInfo ( width, height ) end )
 	   
   -- DEBUG
   -- print("GC Count : " .. collectgarbage("count") .. " kB");
