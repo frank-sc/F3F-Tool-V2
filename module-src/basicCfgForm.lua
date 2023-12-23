@@ -44,6 +44,18 @@ local basicCfgForm = {
 }
 
 --------------------------------------------------------------------------------------------
+-- helper function
+function basicCfgForm:isIn (element, list)
+  
+  for i, elem in ipairs ( list ) do
+     if elem == element then
+	    return true
+	 end
+  end
+  return false
+end
+
+--------------------------------------------------------------------------------------------
 -- Check: control valid ?
 
 function basicCfgForm:checkControl (value)
@@ -76,14 +88,32 @@ function basicCfgForm:initForm(formID)
   local curIndex=-1                         -- index of configured sensor
   local descr = ""                          -- Sensor-Label (e.g. 'GPSLog3') 
    
+  -- build the display list
+
+  -- look for sensor id's which contain an entry with type '9' (GPS Coordinates)
+  local gpsIds = {}
+  for index,sensor in ipairs(sysSensors) do 
+
+    local id = sensor.id
+    if ( sensor.type == 9 ) then             -- type '9' = GPS-coordinates
+      if not self:isIn ( id, gpsIds ) then
+        gpsIds [ #gpsIds+1 ] = id
+	    end	 
+	  end
+  end
+
   -- build the display list - sensor labels are removed from list and preceded to telemetry entries
   -- and a corresponding sensor reference list without sensor labels
   for index,sensor in ipairs(sysSensors) do 
-    if(sensor.param == 0) then
-      descr = sensor.label
-    else
-      list[#list+1]=string.format("%s - %s [%s]",descr,sensor.label, sensor.unit)   
-      self.sensorList[#self.sensorList+1] = sensor
+
+    -- only gps-relevant sensors
+    if self:isIn ( sensor.id, gpsIds ) then            
+      if(sensor.param == 0) then
+        descr = sensor.label
+      else
+        list[#list+1]=string.format("%s - %s [%s]",descr,sensor.label, sensor.unit)   
+        self.sensorList[#self.sensorList+1] = sensor
+      end
     end
   end
 
