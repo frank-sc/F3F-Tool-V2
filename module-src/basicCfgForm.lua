@@ -71,49 +71,21 @@ function basicCfgForm:initForm(formID)
 
   -- create sensor list
   self.sensorList = {}                      -- list of sensors, without 'label'-entries like 'GPSLog3'                                        
-  --local sysSensors = system.getSensors()    -- system list of sensors and telemetry-entries / not used here directly for memory optimization
-  local sysSensors
+  local sysSensors = system.getSensors()    -- system list of sensors and telemetry-entries
   local list={}                             -- display-list of telemetry-entries - with preceding Sensor-Label
   local curIndex=-1                         -- index of configured sensor
   local descr = ""                          -- Sensor-Label (e.g. 'GPSLog3') 
    
-  -- get reduced system sensor data from saved json-file
-  -- direct use of 'system.getSensors()' needs too much memory
-  local file = io.readall(self.dataDir .. "/sensors.jsn")
-  if( file ) then
-     sysSensors = json.decode(file)
-	  
-     -- convert id values back to number
-     for i, sens in ipairs (sysSensors) do
-        sens.id = tonumber (sens.id)
-     end
-  
-   else
-      self.handleErr ("could not read Sensor file")
-   end
-
-   -- for use of Dave McQueeney's SensorEmulator with Jeti Studio:
-   --   use 'getSensors' directly, doesn't work the other way 
-   local device, devType = system.getDeviceType ()
-   if (devType == 1) then  
-      sysSensors = system.getSensors()
-   end	 
- 
   -- build the display list - sensor labels are removed from list and preceded to telemetry entries
   -- and a corresponding sensor reference list without sensor labels
   for index,sensor in ipairs(sysSensors) do 
     if(sensor.param == 0) then
       descr = sensor.label
     else
-      local unit = ""
-      if (sensor.unit) then unit = "[" .. sensor.unit .. "]" end
-
-      list[#list+1]=string.format("%s - %s %s",descr,sensor.label, unit)   
+      list[#list+1]=string.format("%s - %s [%s]",descr,sensor.label, sensor.unit)   
       self.sensorList[#self.sensorList+1] = sensor
     end
   end
-
-  --  print(" basic cfg - lists: " .. collectgarbage("count") .. " kB");
 
   --cleanup
   collectgarbage("collect") 

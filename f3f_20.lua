@@ -1,7 +1,7 @@
 -- ###############################################################################################
 -- # F3F Tool for JETI DC/DS transmitters 
 -- #
--- # Copyright (c) 2023 Frank Schreiber
+-- # Copyright (c) 2023, 2024 Frank Schreiber
 -- #
 -- #    This program is free software: you can redistribute it and/or modify
 -- #    it under the terms of the GNU General Public License as published by
@@ -165,26 +165,6 @@ local function writeToFile (dir, file, data)
     io.close ( f )
   end
 end
-
--- ===============================================================================================
--- ===============================================================================================
--- ========== save Sensor data in a file for later use                                  ==========
--- ========== part of memory optimization for Gen1 - Hardware                           ==========
--- ===============================================================================================
--- ===============================================================================================
-
--- load module
-local storeSensModuleName = dataDirRel .. "/module/storeSens"
-local storeSensMod = require ( storeSensModuleName )
-
--- do it immediately
-storeSensMod:storeSensorData (dataDir, "sensors.jsn")
-
--- unload module
-package.loaded [ storeSensModuleName ] = nil
-storeSensMod = nil
-storeSensModuleName = nil
-collectgarbage("collect") 
 
 -- ===============================================================================================
 -- ===============================================================================================
