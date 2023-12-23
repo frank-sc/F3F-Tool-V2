@@ -736,15 +736,12 @@ end
 
 function display:printSpeedInfo ()
 
---  if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) or
---       f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
-   if ( f3fRun.curStatus == 5 or
-        f3fRun.curStatus == 4 ) then
+   if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) or
+        f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
      
      self.printLegCount ()
 	 
---	 if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) ) then
-     if ( f3fRun.curStatus == 5 ) then
+     if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) ) then
        self:showInsideStatus(f3fRun.f3fRunData.insideFlag)
      else  -- Timeout-Status, flag for launch phase still relevant
        self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
@@ -775,8 +772,7 @@ function display:printFlightInfo (width, height)
   self:setColor ()
 
   -- prior to first run: show splash screen and course information
-  --  if (f3fRun.curStatus==f3fRun.status.INIT) then
-  if ( f3fRun and f3fRun.curStatus==1) then
+  if ( f3fRun:isStatus ( f3fRun.status.INIT )) then
 
     lcd.drawText(14,-1, "F3F",FONT_MAXI)  
     lcd.drawText(6,28, "Tool",FONT_MAXI)  
@@ -812,8 +808,7 @@ function display:printFlightInfo (width, height)
 
 
   -- start phase: show countdown
-  --  elseif ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
-  elseif ( f3fRun.curStatus == 3 ) then
+  elseif ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
      lcd.drawText(10,5, "Launch:", FONT_BOLD)
      local text = string.format("%.0f%s", f3fRun.remainingCountdown,"")
      lcd.drawText(85 - lcd.getTextWidth(FONT_MAXI,text), 23, text, FONT_MAXI)
@@ -966,8 +961,8 @@ local function loop()
   if ( f3fRun:checkFlyOut ( f3fRun.f3fRunData ) ) then    -- 5: status f3fRun.F3F_RUN
 
     -- this event is not valid for launch phase and timeout status -> use launch phase fly-out
---     if ( not f3fRun:isStatus ( f3fRun.status.STARTPHASE ) and not f3fRun:isStatus ( f3fRun.status.TIMEOUT )) then 
-     if ( f3fRun.curStatus ~= 3 and f3fRun.curStatus ~= 4 ) then 
+     if ( not f3fRun:isStatus ( f3fRun.status.STARTPHASE ) and 
+          not f3fRun:isStatus ( f3fRun.status.TIMEOUT )) then 
         if ( f3fRun.curDir == f3fRun.nextTurnDir ) then
            f3fRun:distanceDone()
         end
@@ -986,8 +981,8 @@ local function loop()
      ( f3fRun.curDir == slope.aBase ) ) then                 -- only valid on A-BAse
   
      -- event only valid for launch Phase and timeout 
---     if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) or f3fRun:isStatus (f3fRun.status.TIMEOUT)) then
-     if ( f3fRun.curStatus == 3 or f3fRun.curStatus == 4) then
+     if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) or 
+          f3fRun:isStatus (f3fRun.status.TIMEOUT)) then
         system.playBeep  (0, 700, 300)  -- fly-out beep
      end
   end
@@ -996,31 +991,27 @@ local function loop()
   if ( f3fRun:checkFlyIn ( f3fRun.launchPhaseData ) and
      ( f3fRun.curDir == slope.aBase ) ) then                 -- only valid on A-BAse
 	   
---	 if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) or f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
-     if ( f3fRun.curStatus == 3 or f3fRun.curStatus == 4 ) then
+     if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) or 
+          f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
        system.playBeep  (0, 700, 300)  -- fly-in beep
        f3fRun:setNextTurnDir ()        -- next expected turn side
      end  
 
      -- in launch phase, the f3f run starts here
---	 if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
-     if ( f3fRun.curStatus == 3 ) then
+     if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
        f3fRun:startRun ( false )
 	 
        -- if already a timeout occcurred, the time is running, just update status
---	 elseif ( f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
-     elseif ( f3fRun.curStatus == 4 ) then
---	    f3fRun.curStatus = f3fRun.status.F3F_RUN
-        f3fRun.curStatus = 5
-        -- Timer for speed measurement
-        f3fRun.timerStartSpeed = system.getTimeCounter()
+     elseif ( f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
+       f3fRun.curStatus = f3fRun.status.F3F_RUN
+       -- Timer for speed measurement
+       f3fRun.timerStartSpeed = system.getTimeCounter()
 	   end
   end
 
 -----------------------------------------------------------------------------  
   -- Launch Phase: update countdown
---  if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
-  if ( f3fRun.curStatus == 3 ) then
+  if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
     f3fRun:countdown ()     
   end 
 

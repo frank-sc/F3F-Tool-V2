@@ -27,8 +27,7 @@
 -- ===============================================================================================
 
 local f3fRun = {
---  this needs too much memory for monochrome TX, use Integer directly 
---  status = { INIT=1, ON_HOLD=2, STARTPHASE=3, TIMEOUT=4, F3F_RUN=5 },
+  status = { INIT=1, ON_HOLD=2, STARTPHASE=3, TIMEOUT=4, F3F_RUN=5 },
 
   curPosition = nil,             -- current position of model
   curDist = nil,                 -- current distance from home position
@@ -71,14 +70,12 @@ local f3fRun = {
   gpsSensor = nil
 }
 
--- function f3fRun:isStatus ( status ) return self.curStatus == status end
-                                  -- nice function, but not used for memory optimization 
+function f3fRun:isStatus ( status ) return self.curStatus == status end
 
 --------------------------------------------------------------------------------------------
 function f3fRun:init ()
   -- initial status
-  -- self.curStatus = self.status.INIT
-  self.curStatus = 1
+  self.curStatus = self.status.INIT
   self.curDir = self.globalVar.direction.UNDEF
   self.nextTurnDir = self.globalVar.direction.UNDEF
   
@@ -130,8 +127,7 @@ function f3fRun:launch ()
   end
   
   -- start launch phase
-  --  self.curStatus = self.status.STARTPHASE
-  self.curStatus = 3
+  self.curStatus = self.status.STARTPHASE
   self.rounds = 0
 
   self.launchTime = system.getTimeCounter()
@@ -153,25 +149,21 @@ function f3fRun:startRun ( timeout )
   
   -- in F3B-Distance mode go directly on hold and just count legs
   if ((self.slope.mode == 2) and (self.basicCfg.f3bMode == 2)) then
-  --     self.curStatus = self.status.ON_HOLD
-     self.curStatus = 2
+     self.curStatus = self.status.ON_HOLD
   
   -- timeout - late entry ocurred   
   elseif (timeout) then
-  --     self.curStatus = self.status.TIMEOUT
-     self.curStatus = 4
+     self.curStatus = self.status.TIMEOUT
   else
   -- regular f3f-start 
-  --     self.curStatus = self.status.F3F_RUN
-     self.curStatus = 5
+     self.curStatus = self.status.F3F_RUN
   end
   
   self.f3fStartTime = system.getTimeCounter()
   system.playFile (self.globalVar.resource.audioCourse, AUDIO_QUEUE)
   
   -- start timer for speed measurement after 1,5 sec.
-  --   if ( self.curSpeed and self.curStatus == self.status.F3F_RUN) then
-  if ( self.curSpeed and self.curStatus == 5) then
+  if ( self.curSpeed and self:isStatus (self.status.F3F_RUN) ) then
      self.timerStartSpeed = system.getTimeCounter()
   end
 end
@@ -182,13 +174,12 @@ end
 function f3fRun:distanceDone ()
 
 -- if we are not in a valid f3f-run - just beep to practise
-   -- if (self.curStatus ~= self.status.F3F_RUN) then
-   if (self.curStatus ~= 5) then
+   if ( not f3fRun:isStatus ( self.status.F3F_RUN )) then
      system.playBeep (0, 700, 300)  
    end
    
    -- in F3B-mode: count more rounds after 4 rounds (status 2: ON_HOLD)
-   if ( (self.slope.mode == 2) and ( self.curStatus == 2)) then
+   if ( (self.slope.mode == 2) and ( self:isStatus ( self.status.ON_HOLD))) then
      self.rounds = self.rounds+1
    end
 
@@ -200,9 +191,8 @@ function f3fRun:distanceDone ()
    end
    
    -- are we in f3f-run ?
-   -- if ( self:isStatus (self.status.F3F_RUN)  ) then
-   if ( self.curStatus == 5 ) then
-
+   if ( self:isStatus (self.status.F3F_RUN)  ) then
+   
       -- one more leg done
       self.rounds = self.rounds+1
 
@@ -229,8 +219,7 @@ function f3fRun:distanceDone ()
         system.playNumber (self.flightTime / 1000, 1)
         system.playFile (self.globalVar.resource.audioSeconds, AUDIO_QUEUE)
 		   
---      self.curStatus = self.status.ON_HOLD
-        self.curStatus = 2
+        self.curStatus = self.status.ON_HOLD
       end
    end
    
