@@ -772,7 +772,7 @@ function display:printFlightInfo (width, height)
   self:setColor ()
 
   -- prior to first run: show splash screen and course information
-  if ( f3fRun:isStatus ( f3fRun.status.INIT )) then
+  if ( f3fRun and f3fRun:isStatus ( f3fRun.status.INIT )) then
 
     lcd.drawText(14,-1, "F3F",FONT_MAXI)  
     lcd.drawText(6,28, "Tool",FONT_MAXI)  
