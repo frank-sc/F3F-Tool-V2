@@ -963,29 +963,25 @@ function display:setColor()
 end
 
 --------------------------------------------------------------------------------------------
--- this was meant to show graphically the position inside / outside,
--- for memory optimization on monochrome TX only ABase is shown
+-- graphic display of position inside / outside,
 
 function display:showInsideStatus ( inside_status )
-
-   --   if ( f3fRun.curDir == globalVar.direction.UNDEF ) then return end
 
    -- skip in F3B mode
    if ( slope.mode == 2) then return end
 
-   lcd.drawText(100,10,"  |----|  ",FONT_BOLD)
+   if ( f3fRun.curDir == globalVar.direction.UNDEF ) then return end
+--   lcd.drawText(100,10,"  |----|  ",FONT_BOLD)
 
---   if ( f3fRun.curDir == globalVar.direction.UNDEF ) then return end
-
---   if (inside_status and f3fRun.curDir == globalVar.direction.RIGHT) then
---      lcd.drawText(100,10,"  |  --|  ",FONT_BOLD)
---   elseif (inside_status and f3fRun.curDir == globalVar.direction.LEFT) then
---      lcd.drawText(100,10,"  |--  |  ",FONT_BOLD)
---   elseif ( f3fRun.curDir == globalVar.direction.RIGHT ) then
---      lcd.drawText(100,10,"  |    |--",FONT_BOLD)
---   elseif ( f3fRun.curDir == globalVar.direction.LEFT ) then
---      lcd.drawText(100,10,"--|    |  ",FONT_BOLD)
---   end
+   if (inside_status and f3fRun.curDir == globalVar.direction.RIGHT) then
+      lcd.drawText(100,10,"  |  --|  ",FONT_BOLD)
+   elseif (inside_status and f3fRun.curDir == globalVar.direction.LEFT) then
+      lcd.drawText(100,10,"  |--  |  ",FONT_BOLD)
+   elseif ( f3fRun.curDir == globalVar.direction.RIGHT ) then
+      lcd.drawText(100,10,"  |    |--",FONT_BOLD)
+   elseif ( f3fRun.curDir == globalVar.direction.LEFT ) then
+      lcd.drawText(100,10,"--|    |  ",FONT_BOLD)
+   end
   
    -- A-Base anzeigen
    local aPos = 102
