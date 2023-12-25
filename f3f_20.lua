@@ -169,31 +169,342 @@ end
 -- ===============================================================================================
 -- ===============================================================================================
 -- ========== Object: f3fRun                                                            ==========
+-- ========== contains the necessary logic for the run                                  ==========
 -- ===============================================================================================
 -- ===============================================================================================
 
--- This Object is located in a separate module file. Here comes the load- and unload code
+f3fRun = {
+  status = { INIT=1, ON_HOLD=2, STARTPHASE=3, TIMEOUT=4, F3F_RUN=5 },
 
-local f3fRunModuleName = dataDirRel .. "/module/f3f_run"
+  curPosition = nil,             -- current position of model
+  curDist = nil,                 -- current distance from home position
+  curBearing = nil,              -- current angle from slope
+  curDir = nil,                  -- current position on left/right side from home
+  nextTurnDir = nil,             -- side of expected next turn
+  curSpeed = nil,                -- current speed (given from sensor)
+  
+  -- values for gps-optimization
+  --  maxOffset = 25,             -- max. offset value in [m] at 150 km/h and 100% effect
+                                  -- this constant not used here for memory optimization
 
-local function loadF3fRunModule ()
-  f3fRun = require ( f3fRunModuleName )
+  -- 'offsets' and 'inside-flags' for launch phase and f3f run.
+  -- the values are always calculated independently from the current 
+  -- f3f-status. So we know where we are if a status change occurs
+  -- (from launch phase to f3f run or in case of reset from f3f run to launch phase)
+  -- the values can differ, because the considered offsets work in opposite directions.
 
-  -- provide necessary objects
-  f3fRun.globalVar = globalVar
-  f3fRun.basicCfg = basicCfg
-  f3fRun.slope = slope
-  f3fRun.gpsSensor = gpsSensor
+  launchPhaseData = { offset=0, insideFlag=0 },
+  f3fRunData = { offset=0, insideFlag=0 },
+  
+  -- other stuff
+  curStatus = nil,
+  rounds = 0,
+  
+  launchTime = 0,                 -- time of launch, 30 seconds started
+  countdownTime = 0,              -- countdown from launch (F3F) or tow hook release (F3B) to fly in
+  remainingCountdown = 0,         -- remaining countdown for start time
+  halfDistance = 0,               -- half length of the course, depending on f3f / f3b
 
-  -- initialize
-  f3fRun:init ()
+  f3fStartTime = 0,               -- start time of f3f-run
+  flightTime = 0,
+  
+  timerStartSpeed = -1,           -- timer for speed-measuring 1,5 sec. after start of f3f-run
+}
+
+function f3fRun:isStatus ( status ) return self.curStatus == status end
+
+--------------------------------------------------------------------------------------------
+function f3fRun:init ()
+  -- initial status
+  self.curStatus = self.status.INIT
+  self.curDir = globalVar.direction.UNDEF
+  self.nextTurnDir = globalVar.direction.UNDEF
+  
+  if slope.mode == 2 then                     -- F3B
+    self.halfDistance = basicCfg.f3bDistance / 2
+	
+    if ( basicCfg.f3bMode == 1 ) then             -- speed
+      self.countdownTime = 60
+    elseif ( basicCfg.f3bMode == 2 ) then         -- distance
+      self.countdownTime = 0
+    end
+	
+  else                                             -- F3F
+    self.countdownTime = 30   
+    self.halfDistance = basicCfg.f3fDistance / 2
+  end
 end
 
-local function unloadF3fRunModule ()
-  f3fRun = nil
-  package.loaded [ f3fRunModuleName ] = nil
-  collectgarbage("collect") 
+--------------------------------------------------------------------------------------------
+function f3fRun:setNextTurnDir ()
+
+  -- set side of next turn
+  if ( self.curDir == globalVar.direction.LEFT ) then
+    self.nextTurnDir = globalVar.direction.RIGHT
+  elseif ( f3fRun.curDir == globalVar.direction.RIGHT ) then
+    self.nextTurnDir = globalVar.direction.LEFT
+  end
 end
+
+--------------------------------------------------------------------------------------------
+-- launch: start button was pressed
+
+function f3fRun:launch ()
+  
+  -- slope not defined? ?
+  if ( globalVar.errorStatus == 4 ) then
+     -- cancel - beep
+     system.playBeep (2, 1000, 200)
+     return
+  end
+  
+  -- check, if sensors are active
+  globalVar.errorStatus = 0
+  gpsSensor:getCurPosition ()
+  if ( globalVar.errorStatus ~= 0 ) then
+     -- cancel - beep
+     system.playBeep (2, 1000, 200)
+     return
+  end
+  
+  -- start launch phase
+  self.curStatus = self.status.STARTPHASE
+  self.rounds = 0
+
+  self.launchTime = system.getTimeCounter()
+  self.remainingCountdown = self.countdownTime
+
+  system.playFile ( globalVar.resource.audioStart, AUDIO_IMMEDIATE )
+  
+  -- in F3F and F3B-Speed mode announce countdown time
+  if ((slope.mode ~= 2) or (basicCfg.f3bMode ~= 2)) then
+    system.playNumber (self.remainingCountdown, 0)
+    system.playFile ( globalVar.resource.audioSeconds, AUDIO_QUEUE )
+  end
+end
+
+--------------------------------------------------------------------------------------------
+-- start run: A-Base was passed from outside course or timeout occurred
+
+function f3fRun:startRun ( timeout )
+  
+  -- in F3B-Distance mode go directly on hold and just count legs
+  if ((slope.mode == 2) and (basicCfg.f3bMode == 2)) then
+     self.curStatus = self.status.ON_HOLD
+  
+  -- timeout - late entry ocurred   
+  elseif (timeout) then
+     self.curStatus = self.status.TIMEOUT
+  else
+  -- regular f3f-start 
+     self.curStatus = self.status.F3F_RUN
+  end
+  
+  self.f3fStartTime = system.getTimeCounter()
+  system.playFile ( globalVar.resource.audioCourse, AUDIO_QUEUE )
+  
+  -- start timer for speed measurement after 1,5 sec.
+  if ( self.curSpeed and self:isStatus (self.status.F3F_RUN) ) then
+     self.timerStartSpeed = system.getTimeCounter()
+  end
+end
+
+--------------------------------------------------------------------------------------------
+-- distance done: A-Base or B-Base was passed from inside course
+
+function f3fRun:distanceDone ()
+
+-- if we are not in a valid f3f-run - just beep to practise
+   if ( not f3fRun:isStatus ( self.status.F3F_RUN )) then
+     system.playBeep (0, 700, 300)  
+   end
+   
+   -- in F3B-mode: count more rounds after 4 rounds (status 2: ON_HOLD)
+   if ( (slope.mode == 2) and ( self:isStatus ( self.status.ON_HOLD))) then
+     self.rounds = self.rounds+1
+   end
+
+   local maxRounds
+   if ( slope.mode == 1 ) then
+     maxRounds = 10              -- F3F mode
+   elseif ( slope.mode == 2 ) then
+     maxRounds = 4               -- F3B mode
+   end
+   
+   -- are we in f3f-run ?
+   if ( self:isStatus (self.status.F3F_RUN)  ) then
+   
+      -- one more leg done
+      self.rounds = self.rounds+1
+
+      -- perform the appropriate beep
+      if (self.rounds <= maxRounds-2 ) then
+        system.playBeep  (0, 700, 300)  
+      elseif (self.rounds == maxRounds-1 ) then
+        system.playBeep  (1, 700, 300)	   
+      else	  
+        system.playBeep  (2, 850, 200)
+      end
+
+      -- from leg 8 make an announcement
+      if ( self.rounds > maxRounds-3 and self.rounds < maxRounds ) then
+         system.playNumber (self.rounds, 0)	  
+      end
+
+      -- all legs done - get flight time, change status
+      if ( self.rounds >= maxRounds ) then
+  	     local endTime = system.getTimeCounter()
+        self.flightTime = endTime-self.f3fStartTime
+		  
+        system.playFile ( globalVar.resource.audioTime, AUDIO_QUEUE )
+        system.playNumber (self.flightTime / 1000, 1)
+        system.playFile ( globalVar.resource.audioSeconds, AUDIO_QUEUE )
+		   
+        self.curStatus = self.status.ON_HOLD
+      end
+   end
+   
+   -- set side of next turn
+   self:setNextTurnDir ()
+
+end
+
+--------------------------------------------------------------------------------------------
+-- calc remaining time for launch phase and give some announcements
+
+function f3fRun:countdown ()
+
+  -- skip countdown for F3B-Distance mode
+  if ((slope.mode == 2) and (basicCfg.f3bMode == 2)) then
+     return
+  end	 
+
+  local prevValue = self.remainingCountdown
+  local curTime = system.getTimeCounter()     
+  self.remainingCountdown = math.floor (self.countdownTime - (curTime-self.launchTime)/1000)
+
+  if (self.remainingCountdown ~= prevValue) then
+
+     -- Announcement
+     if ( (self.remainingCountdown >= 30 and self.remainingCountdown % 10 == 0) or 
+          (self.remainingCountdown  < 30 and self.remainingCountdown %  5 == 0) or 
+          (self.remainingCountdown <= 10) )  then
+		
+        system.playNumber (self.remainingCountdown, 0)
+     end
+  end  
+    
+  -- Timeout: start F3F run / cancel F3B run 
+  if ( self.remainingCountdown == 0 ) then
+	   
+     if ( slope.mode == 1 ) then        -- F3F
+        self:startRun ( true ) 
+     elseif ( slope.mode == 2 ) then    -- F3B
+        system.playBeep (2, 500, 400)  
+        self:init ()
+     end	 
+  end
+end
+
+--------------------------------------------------------------------------------------------
+-- update current position, distance and bearing data
+
+function f3fRun:updatePositionData ( point )
+
+  if ( not point ) then return end
+  self.curPosition = point
+  
+  ------ calc current distance
+  if (slope.gpsHome) then
+     self.curDist = gps.getDistance (slope.gpsHome, self.curPosition)
+  end
+
+  ------ calc current flight angle to slope
+  if ( slope.gpsHome and slope.bearing ) then 
+     
+     -- current flight angle from north
+     self.curBearing = gps.getBearing (slope.gpsHome, self.curPosition)
+
+     -- current flight angle to slope
+     self.curBearing = slope.bearing - self.curBearing
+     if (self.curBearing < 0) then 
+        self.curBearing = self.curBearing + 360
+     end
+	 
+     -- determine, on which side of home position the model is located
+     -- curBearing always meant clockwise from flight line to slope
+	 
+     if (self.curBearing <= 90 or self.curBearing > 270) then     -- 0-90 deg, 270-360 deg
+        self.curDir = globalVar.direction.RIGHT
+     else                             
+        self.curDir = globalVar.direction.LEFT                    -- 90-270 deg
+     end
+
+  end
+end
+
+--------------------------------------------------------------------------------------------
+-- update current speed from sensor, calculate optimization offsets
+-- the whole magic of GPS and latency optimization
+
+function f3fRun:updateSpeedAndOptimizationData ( speed )
+
+  self.curSpeed = speed
+  if ( self.curSpeed ) then
+  
+     -- offset determination
+     -- for memory optimization we don't use configurable parameters but calculate it here absolutely
+
+     -- self.f3fRunData.offset = (self.curSpeed / (150/self.maxOffset))  * (basicCfg.speedFaktorF3F / basicCfg.maxSpeedFaktor)
+     -- self.launchPhaseData.offset = (-1) * (((self.curSpeed / (150/self.maxOffset))  * (basicCfg.speedFaktorLaunchPhase / basicCfg.maxSpeedFaktor)) + basicCfg.statOffsetLaunchPhase)
+
+     --  1/(150/25)  * (65 / 100) = 0.65/6 
+     -- stat. Offset bei Start: 8
+
+     self.f3fRunData.offset = self.curSpeed * 0.65/6
+     -- *(-1): in launch phase the offset works in the opposite direction to optimize the first fly in
+     --        also add a static offset, this brought better results in flying tests, can't explain why
+     self.launchPhaseData.offset =  (-1) * ((self.curSpeed * 0.65/6) + 8)
+  end
+end
+
+--------------------------------------------------------------------------------------------
+-- check, if a fly out occurred, consider the calculated offsets and the turn line calculation
+-- based on the cosinus
+
+function f3fRun:checkFlyOut ( trackData )
+
+  if ( trackData.insideFlag and 
+     (self.curDist + trackData.offset) * math.abs ( math.cos (math.rad ( self.curBearing )))
+      > self.halfDistance) then
+  
+     trackData.insideFlag = false  
+     return true
+  end
+  
+  return false  
+end
+
+--------------------------------------------------------------------------------------------
+-- check, if a fly in occurred, consider the calculated offsets and the turn line calculation
+-- based on the cosinus
+
+function f3fRun:checkFlyIn ( trackData )
+
+  if ( not trackData.insideFlag and 
+     (self.curDist + trackData.offset) * math.abs ( math.cos (math.rad ( self.curBearing ))) 
+      < self.halfDistance) then
+  
+     trackData.insideFlag = true 
+     return true
+  end
+  
+  return false  
+end
+
+
+
+
 
 
 -- ===============================================================================================
@@ -338,9 +649,6 @@ end
 --------------------------------------------------------------------------------------------
 function basicCfg:initForm(formID)
 
-  -- for memory optimization th module 'f3fRun' is unloaded during basic configuration
-  unloadF3fRunModule ()
-
   self.formModule = require ( self.formModuleName )
 
   -- set needed objects and values  
@@ -363,7 +671,6 @@ function basicCfg:closeForm()
   package.loaded [ self.formModuleName ] = nil
   collectgarbage("collect")   
 
-  loadF3fRunModule ()
   -- print("CloseCfg/GC Count after reload : " .. collectgarbage("count") .. " kB");
 
 end  
@@ -596,9 +903,6 @@ slopeManager = {
 -- Form anzeigen 
 function slopeManager:initSlopeForm (formID)
 
-  -- for memory optimization th module 'f3fRun' is unloaded during course cfg
-  unloadF3fRunModule ()
-
   -- load Module
   self.formModule = require ( self.formModuleName )
   
@@ -634,9 +938,6 @@ function slopeManager:closeSlopeForm()
   package.loaded [ self.formModuleName ] = nil
   collectgarbage("collect")
  
-  -- reload f3fRun - module
-  loadF3fRunModule ()
-  
   -- print("Slope/GC Count after load f3fRun : " .. collectgarbage("count") .. " kB")
 end 
 
@@ -856,10 +1157,8 @@ local function init()
   slope:init ()        -- the slope
   gpsSensor:init ()    -- the gps sensor
   basicCfg:init ()     -- the basic configuration
+  f3fRun:init ()       -- the f3fRun module
 
-  -- initially load f3fRun Module
-  loadF3fRunModule ()
-    
   -- register forms
   -- Hint: the functions from 'basicCfg' and 'slopeManager' cannot be passed directly 
   --       as callback functions to 'registerForm', because we need the 'self'-parameter 
@@ -892,9 +1191,8 @@ end
 
 local function loop() 
 
-  -- check: while basic configuration the f3fRun-Object is unloaded for
-  -- memory optimization. in this case skip loop
-  if (f3fRun == nil) then return end
+  -- check: device error -> skip loop
+  if ( globalVar.errorStatus == 6 ) then return end
 
   -- check if course was changed by external app (F3FTool Database)
   -- indicated by a global variable
