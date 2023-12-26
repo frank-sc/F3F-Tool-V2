@@ -183,10 +183,6 @@ f3fRun = {
   nextTurnDir = nil,             -- side of expected next turn
   curSpeed = nil,                -- current speed (given from sensor)
   
-  -- values for gps-optimization
-  --  maxOffset = 25,             -- max. offset value in [m] at 150 km/h and 100% effect
-                                  -- this constant not used here for memory optimization
-
   -- 'offsets' and 'inside-flags' for launch phase and f3f run.
   -- the values are always calculated independently from the current 
   -- f3f-status. So we know where we are if a status change occurs
@@ -453,18 +449,13 @@ function f3fRun:updateSpeedAndOptimizationData ( speed )
   if ( self.curSpeed ) then
   
      -- offset determination
-     -- for memory optimization we don't use configurable parameters but calculate it here absolutely
+     -- generally speed/6 is taken as 100% offset (max), what means 25m at speed of 150 km/h.
+     -- this value can be reduced by a configurable speed faktor, which is taken as a percentage value (/100)
+     self.f3fRunData.offset = self.curSpeed/6 * (basicCfg.speedFaktorF3F/100)
 
-     -- self.f3fRunData.offset = (self.curSpeed / (150/self.maxOffset))  * (basicCfg.speedFaktorF3F / basicCfg.maxSpeedFaktor)
-     -- self.launchPhaseData.offset = (-1) * (((self.curSpeed / (150/self.maxOffset))  * (basicCfg.speedFaktorLaunchPhase / basicCfg.maxSpeedFaktor)) + basicCfg.statOffsetLaunchPhase)
-
-     --  1/(150/25)  * (65 / 100) = 0.65/6 
-     -- stat. Offset bei Start: 8
-
-     self.f3fRunData.offset = self.curSpeed * 0.65/6
      -- *(-1): in launch phase the offset works in the opposite direction to optimize the first fly in
      --        also add a static offset, this brought better results in flying tests, can't explain why
-     self.launchPhaseData.offset =  (-1) * ((self.curSpeed * 0.65/6) + 8)
+     self.launchPhaseData.offset =  (-1) * ((self.curSpeed/6 * (basicCfg.speedFaktorLaunchPhase/100)) + basicCfg.statOffsetLaunchPhase)
   end
 end
 
@@ -611,15 +602,13 @@ basicCfg = {
   f3bMode,                        -- F3B: Speed:1  /  Distance: 2
   
   formModuleName = dataDirRel .. "/module/basicCfgForm",  -- load basicCfgform module only when
-  formModule = nil                                        --   needed during configuration
-
+  formModule = nil,                                       --   needed during configuration
 
 -- values for adjustment of latency
--- to save some memory on Gen1-TX these constants are disabled and values used directly
---  maxSpeedFaktor = 100,          -- max value for Speed factor (configured in %)
---  speedFaktorF3F = 65,           -- faktor for speed effect on offset during f3f run
---  speedFaktorLaunchPhase = 65,   -- faktor for speed effect on offset during launch phase
---  statOffsetLaunchPhase = 8,     -- static offset for launch phase 
+-- currently not configured, but can be put on potis for adjustment
+  speedFaktorF3F = 65,           -- faktor for speed effect on offset during f3f run
+  speedFaktorLaunchPhase = 65,   -- faktor for speed effect on offset during launch phase
+  statOffsetLaunchPhase = 8      -- static offset for launch phase 
 }
 
 --------------------------------------------------------------------------------------------
