@@ -1,4 +1,4 @@
-# F3F-Tool Version 2.0 / Installation guide and users manual
+# F3F-Tool Version 2.1 / Installation guide and users manual
 ### This manual describes how to install, configure and use the F3F-Tool for training of F3F and F3B tasks.<br><br>
 ## Contents:
 1. [General Description](#generalDescription)
