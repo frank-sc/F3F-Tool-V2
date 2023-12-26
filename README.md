@@ -12,8 +12,8 @@ For installation of the current development version (HEAD) please refer to the [
 ## Status
 The tool in Version 2.0 is functionally identical with V1.4 (in Repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1), but memory optimization for Generation 1 transmitters was partly removed. Further development on this tool unfortunately can not be done for the old transmitters.
 
-## News in V 2.0
-- added device check - will not work on "JETI DC-16", "JETI DS-16", "JETI DC-14", "JETI DS-14" with monochrome diaplay.
+## News in V 2.1
+- none yet
 
 ## Development notices
 The main program file 'f3f_\<version\> and the working directory 'f3fTool-\<version\> are always renamed for a new upcoming version. This is to make sure that everything fits together and to allow several versions to run independently on one transmitter.
