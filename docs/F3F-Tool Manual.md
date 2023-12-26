@@ -1,12 +1,11 @@
-# F3F-Tool Version 1.4 / Installation guide and users manual
+# F3F-Tool Version 2.0 / Installation guide and users manual
 ### This manual describes how to install, configure and use the F3F-Tool for training of F3F and F3B tasks.<br><br>
 ## Contents:
 1. [General Description](#generalDescription)
 2. [Program Installation](#programInstallation)
 3. [Program Configuration](#programConfiguration)
 4. [Usage](#usage)
-5. [Pricing and License](#pricing)
-6. [Changelog for Users of 1.3 Test Version](#changelog)<br><br>
+5. [Pricing and License](#pricing)<br><br>
 <a name="generalDescription"></a>
 # 1. General Description
 ## 1.1. What it does
@@ -22,14 +21,12 @@ To use this app a GPS Sensor must be placed in the model and connected to Jeti t
   to calculate the fly in signal accurately, so very short fly out / fly in at 50m is not possible.Depending on the speed of fly out the signal may be given at 60 or even 70 meters.
 - somtimes there is a GPS-drift of given start point. In this case the whole course might drift to left or right some meters, because the turn positions are calculated in relation to start. To handle this effect the app includes a function to compensate the drift during the flight.
 ## 1.3. Requirements
+- Generation 2 Jeti transmitter (with colour display).<br>
+**This version can not be used with 'generation 1' Jeti-transmitters!** So it will not work with DC-16", "DS-16", "DC-14", "DS-14" with monochrome display. Please do not install!
 - Newest generation GPS-Sensor must be placed in the glider, needed telemetry values are: **latitude, longitude, speed**
 - If the sensor allows, not needed telemetry values should be disabled to speed up the telemetry transfer to transmitter. Also the usage of telemetry values from other sensors or from the receiver should be reduced.
 - Please use the newest Firmware for your Jeti-transmitter. This tool was developed and tested with **firmware 5.06 LUA from May 26 2021**, older Versions may cause problems.
 
-Special requirements for 'Generation 1' - transmitters with monochrome display:  
-- the newest LUA-enabled firmware must be installed on the transmitter (check: **'System / Info / Version'** – must end with 'LUA')
-- **Safety Issue:  
-For the model you use with 'f3fTool' no other LUA Application must be installed to consider the given memory limitations!**
 ##  1.4. F3B Support
 To enable this tool also for F3B Training, some features are provided:  
 - seperate length definitions for F3F / F3B course
@@ -176,21 +173,6 @@ If you like the tool and you are willing to support the project you are welcome 
 Link to paypal.me:<br>
 **https://www.PayPal.Me/f3frank**
 
-<a name="changelog"></a>
-#  6. Changelog for Users of 1.3 Test Version 
-What is new in this Version 1.4?
-- Instead of only two points now three points are scanned to define a slope. Also it must be specified, what is left and right.
-This allows a greater distance between the left and right point to determine the slope bearing, what means more precision. Also the bearing is independent from the starting point definition.
-If you want it to do like in Version 1.3, you can set left or right together with the starting point and then just define the remaining point.
-- In F3F mode now the wind direction (90° to slope) is shown instead of direction of the slope edge
-- A-Base is supported, can be toggled left /right with the multi switch
-- The starting point can be redefined without affecting the slope bearing
-- The 'Start Switch' now is a 'Multi Switch' with three functions (start, toggle A-Base left/right, redefine start point)
-- The starting point can be adjusted in steps of 1m for compensation of GPS drift effects by a dedicated control
-- The speed is now measured and announced 1.5 sec. after course entry instead of directly at course entry
-- Countdown announcement now: 30, 25, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 beep
-- F3B Support mode with course definition not from center but from from A-Base, time measurement after 4 legs (speed) or count of legs (distance)
-- Currently only english Version available
-- Improved error management<br><br><br>
 
-Copyright &copy; 2023 Frank Schreiber
+#
+Copyright &copy; 2023, 2024 Frank Schreiber

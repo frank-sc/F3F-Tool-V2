@@ -1,25 +1,25 @@
-# F3F-Tool V1
-This lua-app for Jeti transmitters is made for gps-based training of RC glider slope racing competitions (F3F) and also distance and speed tasks for F3B.
-
-All program releases in this 'V1'-repository are made to be compatible with generation 1 Jeti transmitters (with monochrome display). Please consider the requirements for those transmitters mentioned in the [**F3F-Tool manual**](docs/F3F-Tool%20Manual.md), so only use the binary form of the program (.lc) and do not use other lua-apps at the same time.
+# F3F-Tool V2
+This lua-app for Jeti transmitters is made for gps-based training of RC glider slope racing competitions (F3F) and also distance and speed tasks for F3B.<br>
+**All program releases in this 'V2'-repository are only compatible with generation 2 Jeti transmitters (with colour display)!**<br>
+For generation 1 Jeti transmitters please use Version 1.x from repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1) 
 
 ## Program Installation
-For installation of a stable release please download the zip-file and the corresponding manual of the newest release from the [**releases-page**](https://github.com/frank-sc/F3F-Tool-V1/releases), download of the 'source code' packages is not necessary. Copy all files and directories into your 'apps' directory on the transmitter, as described in the manual. Then please follow the further steps in the manual.<br>
+For installation of a stable release please download the zip-file and the corresponding manual of the newest release from the [**releases-page**](https://github.com/frank-sc/F3F-Tool-V2/releases), download of the 'source code' packages is not necessary. Copy all files and directories into your 'apps' directory on the transmitter, as described in the manual. Then please follow the further steps in the manual.<br>
 **Important: Please use newest Jeti Firmware (currently 5.06 LUA). Older Firmware Versions may cause problems!**
 
-For installation of the current development version (HEAD) please refer to the [**wiki**](https://github.com/frank-sc/F3F-Tool-V1/wiki)
+For installation of the current development version (HEAD) please refer to the [**wiki**](https://github.com/frank-sc/F3F-Tool-V2/wiki)
 
 ## Status
-The tool in Version 1.4 is working quite well on the slope for F3F. For F3B-tasks there are some issues, especially with the very hight speed reached in the speed-task and with slightly inaccurate determination of the course bearing. See more detailed description in [**issues**](https://github.com/frank-sc/F3F-Tool-V1/issues).
+The tool in Version 2.0 is functionally identical with V1.4 (in Repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1), but memory optimization for Generation 1 transmitters was partly removed. Further development on this tool unfortunately can not be done for the old transmitters.
 
-## News in V 1.41
-- added french language configuration
+## News in V 2.0
+- added device check - will not work on "JETI DC-16", "JETI DS-16", "JETI DC-14", "JETI DS-14" with monochrome diaplay.
 
 ## Development notices
 The main program file 'f3f_\<version\> and the working directory 'f3fTool-\<version\> are always renamed for a new upcoming version. This is to make sure that everything fits together and to allow several versions to run independently on one transmitter.
 
 ## Installation of GPS-sensor
-Information about choosing a GPS-sensor and the Installation in the glider can be found in the [**wiki**](https://github.com/frank-sc/F3F-Tool-V1/wiki)
+Information about choosing a GPS-sensor and the Installation in the glider can be found in the [**wiki**](https://github.com/frank-sc/F3F-Tool-V2/wiki)
 
 ## Project Support
 If you like the tool you can support my work on the the project by making a donation, i appreciate :)<br><br>
