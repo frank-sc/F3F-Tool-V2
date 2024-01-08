@@ -13,7 +13,8 @@ For installation of the current development version (HEAD) please refer to the [
 The tool in Version 2.0 is functionally identical with V1.4 (in Repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1), but memory optimization for Generation 1 transmitters was partly removed. Further development on this tool unfortunately can not be done for the old transmitters.
 
 ## News in V 2.1
-- none yet
+- direct input of slope direction / course direction possible now, so no need to scan Left / Right / Bear if course is known
+- for F3B-course scan now the A-Line is used instead of flight direction
 
 ## Development notices
 The main program file 'f3f_\<version\> and the working directory 'f3fTool-\<version\> are always renamed for a new upcoming version. This is to make sure that everything fits together and to allow several versions to run independently on one transmitter.
