@@ -2,7 +2,7 @@
 -- # F3F Tool for JETI DC/DS transmitters 
 -- # Module: basicCfgForm
 -- #
--- # Copyright (c) 2023 Frank Schreiber
+-- # Copyright (c) 2023, 2024 Frank Schreiber
 -- #
 -- #    This program is free software: you can redistribute it and/or modify
 -- #    it under the terms of the GNU General Public License as published by

@@ -2,7 +2,7 @@
 -- # F3F Tool for JETI DC/DS transmitters 
 -- # Module: slopeMgrForm
 -- #
--- # Copyright (c) 2023 Frank Schreiber
+-- # Copyright (c) 2023, 2024 Frank Schreiber
 -- #
 -- #    This program is free software: you can redistribute it and/or modify
 -- #    it under the terms of the GNU General Public License as published by
@@ -18,11 +18,19 @@
 -- #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -- #
 -- ###############################################################################################
+-- ###############################################################################################
+-- # 
+-- # The bearing of a slope or a F3B-Course can be either given by direct input 
+-- # (F3F: wind direction / F3B: Flight course dir.) or by scan of two points (left / right)
+-- # at the slope (F3F) or A-Line (F3B).
+-- # Additionally th starting point must be scanned.
+-- # 
+-- ###############################################################################################
 
 -- ===============================================================================================
 -- ===============================================================================================
 -- ========== Object: slopeMgrForm                                                      ==========
--- ========== contains form and functions for course setup                              ==========
+-- ========== contains form and functions for slope / course setup                      ==========
 -- ===============================================================================================
 -- ===============================================================================================
 
@@ -42,77 +50,136 @@ local slopeMgrForm = {
   checkBoxSlope = nil,       -- checkBox components
   checkBoxBearingL = nil,
   checkBoxBearingR = nil,
+  intBoxBearing = nil,       -- direct input course-bearinf / wind direction
   
   gpsNewHome = nil,          -- new Center point
   gpsBearLeft = nil,         -- left bearing point
   gpsBearRight = nil,        -- right bearing point
+  bearing = nil,             -- new bearing
+  valueBearingDirect = nil,  -- direct bearing input value
+  
+  -- enabled-flags
+  leftRightScanEnabled = true,
+  courseTypeToggleEnabled = true,
+  
+  -- component pointer for bearing (left/right) scan
+  bearScan = {},
   
   mode = nil                 -- 1: F3F  /  2: F3B
 }
 
 --------------------------------------------------------------------------------------------
-function slopeMgrForm:setF3FSlopeSetup ()
-  form.setTitle ("Setup F3F-Slope")
+  -- Section Form Setup
+--------------------------------------------------------------------------------------------
+function slopeMgrForm:enableLeftRightScan ( enable )
+
+  if ( enable ) then
+    form.setButton(2,"Left", ENABLED)
+    form.setButton(3,"Right", ENABLED)
+  else
+    form.setButton(2,"Left", DISABLED)
+    form.setButton(3,"Right", DISABLED)
+  end
   
-  form.addRow(3)
-  form.addLabel({label="Start:", width=65, font=FONT_BOLD})
-  form.addLabel({label="center point (starting pos.)", width=195})
-  self.checkBoxSlope = form.addCheckbox( false, nil, {enabled=false})
-
-  form.addRow(3)
-  form.addLabel({label="Left:", width=65, font=FONT_BOLD})
-  form.addLabel({label="left Bearing point", width=195})
-  self.checkBoxBearingL = form.addCheckbox( false, nil, {enabled=false})
-
-  form.addRow(3)
-  form.addLabel({label="Right:", width=65, font=FONT_BOLD})
-  form.addLabel({label="right bearing point", width=195})
-  self.checkBoxBearingR = form.addCheckbox( false, nil, {enabled=false})
-
-  form.setButton(1,"Start", ENABLED)
-  form.setButton(2,"Left",ENABLED)
-  form.setButton(3,"Right",ENABLED)
-  form.setButton(4,"F3B",ENABLED)
-  
-  -- slope already defined ?  
-  if ( self.slope:isDefined () ) then
-     self.displayName = self.slope.name
-     self.action = string.format("%s-Slope (%.0f degrees)", self:getWindDir (self.slope.bearing) )
-  end  
-
+  self.leftRightScanEnabled = enable
 end
 
 --------------------------------------------------------------------------------------------
-function slopeMgrForm:setF3BCourseSetup ()
-  form.setTitle ("Setup F3B-Course")
+function slopeMgrForm:enableCourseToggle ( enable )
 
-  form.addRow(3)
-  form.addLabel({label="Start:", width=65, font=FONT_BOLD})
-  form.addLabel({label="starting position", width=195})
-  self.checkBoxBearingL = form.addCheckbox( false, nil, {enabled=false})
-
-  form.addRow(3)
-  form.addLabel({label="Bear:", width=65, font=FONT_BOLD})
-  form.addLabel({label="bearing point", width=195})
-  self.checkBoxBearingR = form.addCheckbox( false, nil, {enabled=false})
-
-  -- form.setButton(1,"Start", ENABLED)
-  form.setButton(1,"Start", ENABLED)
-  form.setButton(2,"Bear",ENABLED)
-  form.setButton(4,"F3F",ENABLED)
+  local buttonText
+  if ( self.mode == 1 ) then buttonText = "F3B"
+  elseif ( self.mode == 2 ) then buttonText = "F3F"	end
+	
+  if ( enable ) then
+    form.setButton(4, buttonText, ENABLED)
+  else
+    form.setButton(4, buttonText, DISABLED)
+  end
   
-  -- course already defined ?  
-  if ( self.slope:isDefined () ) then
-     self.displayName = self.slope.name
-     self.action = string.format("F3B-course (%.0f degrees)", self.slope.bearing )
-  end  
-  
+  self.courseTypeToggleEnabled = enable
 end
 
 --------------------------------------------------------------------------------------------
+function slopeMgrForm:hideBearingScanLine ( hide )
+
+  for _i, comp in ipairs ( self.bearScan ) do 
+    form.setProperties ( comp, { visible = not hide } )
+  end
+  form.setProperties ( self.checkBoxBearingL, { visible = not hide } )
+  form.setProperties ( self.checkBoxBearingR, { visible = not hide } )
+end
+
+--------------------------------------------------------------------------------------------
+function slopeMgrForm:cycleDegreeBox (value)
+
+  -- make the box cycle
+  if ( value == -2 ) then
+    value = 359
+  elseif ( value == 360 ) then
+    value = -1
+  end
+
+  form.setValue( self.intBoxBearing, value)
+  return value
+end
+
+--------------------------------------------------------------------------------------------
+function slopeMgrForm:bearingChanged ( value )
+
+  -- make the box cycle
+  value = self:cycleDegreeBox ( value )
+
+  -- save value
+  self.valueBearingDirect = value
+
+  -- in case of f3f-slope the wind direction is given, so the bearing is 90 deg higher
+  if ( self.mode == 1 ) then
+    self.valueBearingDirect = self.valueBearingDirect + 90
+	if ( self.valueBearingDirect > 359) then
+	  self.valueBearingDirect = self.valueBearingDirect - 360
+	end
+  end
+
+  -- directInput active?  ( -1 means scan is used )
+  local directInput = (  value ~= -1 )
+
+  if ( directInput ) then
+    -- direct bearing input is used
+    self.displayName = ""  	
+  else
+    -- scan is used
+	self.valueBearingDirect = nil
+	self.action = ""
+  end
+  
+  -- make bearing scan line invisible in case of direct input 
+  self:hideBearingScanLine ( directInput )
+	
+  -- if direct input is active disable buttons
+  self:enableLeftRightScan ( not directInput )
+  self:enableCourseToggle ( not directInput )
+
+  -- display slope / course  
+  if ( directInput ) then
+    local courseType, dir
+
+    if ( self.mode == 1 ) then
+      courseType = "Slope"
+	  dir = self:getWindDir (self.valueBearingDirect )
+    elseif ( self.mode == 2 ) then 
+	  courseType = "F3B-course"
+	  dir = self.valueBearingDirect
+	end
+	
+	self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
+  end  	
+end
+
+-------------------------------------------------------------------------------------------
 function slopeMgrForm:initSlopeForm (formID)
 
-  local freeMem = collectgarbage("count");
+  local formTitle, directInputText, scanText, toggleButtonText
 
   -- clear memory for new challenge
   collectgarbage("collect") 
@@ -121,31 +188,85 @@ function slopeMgrForm:initSlopeForm (formID)
   if ( not self.mode) then
      self.mode = self.slope.mode
   end	 
-  if (self.mode == 2) then formID = 2 end
   
   -- reset display action
+  self.displayName = ""
   self.action = ""
 
-  -- show form for mode
-  if ( formID == 1) then
-     self:setF3FSlopeSetup ()
-	 
-  elseif ( formID == 2) then	 
-     self:setF3BCourseSetup ()
-  end	 
+  -- display texts for F3F / F3B
+  if ( self.mode == 1 ) then
+    formTitle = "Setup F3F-Slope"
+	directInputText = "direct input wind direction:"
+	scanText = "Slope"
+	toggleButtonText = "F3B"
+  elseif ( self.mode == 2 ) then
+    formTitle = "Setup F3B-Course"
+	directInputText = "direct input course bearing:"
+	scanText = "A-Line"
+	toggleButtonText = "F3F"
+  end
 
-  -- show a cancel button, until all points are scanned
+  form.setTitle ( formTitle )
+  
+  -- direct input of wind direction
+  form.addRow(2)
+  form.addLabel({label = directInputText, width = 240}) -- 120
+  self.intBoxBearing = form.addIntbox (-1, -2, 360, -1, 0, 1, function (value) self:bearingChanged (value) end, {enabled=true, visible = true, width = 65, label = utf8.char (176)})
+  form.addSpacer (150, 2)
+  form.addLabel({label="-------------------------------------------------------------------------------------------------", font=FONT_MINI})
+  form.addSpacer (150, 2)
+  
+  -- scan section
+  form.addRow(3)
+  form.addLabel({label = "Scan", width = 140, font=FONT_BOLD})
+  form.addLabel({label="Start:", width=55, font=FONT_NORMAL})
+  self.checkBoxSlope = form.addCheckbox( false, nil, {enabled=false, width = 30})
+
+  form.addRow(6)
+  self.bearScan[1] = form.addLabel({label = scanText .. ":", width=75, font=FONT_BOLD})
+  self.bearScan[2] = form.addLabel({label="Left:", width=45, font=FONT_NORMAL})
+  self.checkBoxBearingL = form.addCheckbox( false, nil, {enabled=false, width = 30})
+
+  self.bearScan[3] = form.addLabel({label="----------", width=70, font=FONT_NORMAL})
+  self.bearScan[4] = form.addLabel({label="Right:", width=53, font=FONT_NORMAL})
+  self.checkBoxBearingR = form.addCheckbox( false, nil, {enabled=false, width = 30})
+
+  -- setup buttons
+  form.setButton(1, "Start", ENABLED)
+  form.setButton(2, "Left", ENABLED)
+  form.setButton(3, "Right", ENABLED)
+  form.setButton(4, toggleButtonText, ENABLED)
+  
+  -- course already defined - and matches current selected course type?  
+  if ( self.slope:isDefined () and ( self.slope.mode == self.mode )) then
+    self.displayName = self.slope.name
+	
+    -- display it
+    local courseType, dir
+
+    if ( self.mode == 1 ) then
+      courseType = "Slope"
+      dir = self:getWindDir (self.slope.bearing )
+    elseif ( self.mode == 2 ) then 
+	  courseType = "F3B-course"
+      dir = self.slope.bearing
+	end
+	self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
+  end  
+  
+  -- show a cancel button, until data is complete
   form.setButton(5, "Cancel", ENABLED)
 
-  local freeMem = collectgarbage("count");
-  print("GC Count after slopemgr init : " .. freeMem .. " kB");
-   
+  -- local freeMem = collectgarbage("count");
+  -- print("GC Count after slopemgr init : " .. freeMem .. " kB");
 end
-     
+
 --------------------------------------------------------------------------------------------
--- get GPS-position from Sensor
+  -- Section Key Handling
+--------------------------------------------------------------------------------------------
 function slopeMgrForm:scanGpsPoint ( checkBox, successMsg )
 
+-- get GPS-position from Sensor
   local gpsPoint
   gpsPoint = self.gpsSens:getCurPosition ()  
 	
@@ -165,103 +286,104 @@ function slopeMgrForm:scanGpsPoint ( checkBox, successMsg )
 end
 
 --------------------------------------------------------------------------------------------
-function slopeMgrForm:handleF3FSlopeKeys(key)
+function slopeMgrForm:checkF3FDataComplete()
 
-   -- start button
-   if(key==KEY_1) then
-     self.gpsNewHome = self:scanGpsPoint ( self.checkBoxSlope, "Starting position set" )
+  local complete = false
+  
+  -- .. case of direct bearing input   
+  if ( self.gpsNewHome and self.valueBearingDirect ) then
+    self.bearing = self.valueBearingDirect
+	complete = true
 
-   -- button bearing left 
-   elseif(key==KEY_2) then
-     self.gpsBearLeft = self:scanGpsPoint ( self.checkBoxBearingL, "Left bearing point set" )
+   -- .. case of slope scan
+  elseif ( self.gpsNewHome and self.gpsBearLeft and self.gpsBearRight ) then
+    self.bearing = gps.getBearing ( self.gpsBearLeft, self.gpsBearRight )
+	complete = true
+  end
 
-   -- button bearing right
-   elseif(key==KEY_3) then
-     self.gpsBearRight = self:scanGpsPoint ( self.checkBoxBearingR, "Right bearing point set" )
-
-   -- toggle to F3B-mode
-   elseif(key==KEY_4) then
-     if not ( self.gpsNewHome or self.gpsBearLeft or self.gpsBearRight ) then
-       self.mode = 2
-       form.reinit (2)
-     end
-   end
-   
-   -- disable F3B mode and hide course name if scan is started
-   if ( self.gpsNewHome or self.gpsBearLeft or self.gpsBearRight ) then
-      form.setButton(4,"F3B",DISABLED)
-      self.displayName = ""   
-   end
-
-   -- data complete ? -> show slope bearing and enable OK
-   if ( self.gpsNewHome and self.gpsBearLeft and self.gpsBearRight ) then
-   
-      local bearing = gps.getBearing ( self.gpsBearLeft, self.gpsBearRight )
-      self.action = string.format("%s-Slope (%.0f degrees)", self:getWindDir (bearing) )
-   
-      form.setButton(5, "Ok", ENABLED)
-   end
-
+  -- display and enable 'ok'
+  if ( complete ) then
+    local dir = self:getWindDir (self.bearing) 	
+    self.action = string.format("%s: %s (%.0f%s)", "Slope", self:getDirDesc(dir), dir, utf8.char (176) )
+    form.setButton(5, "Ok", ENABLED)
+  end   
 end
 
 --------------------------------------------------------------------------------------------
-function slopeMgrForm:handleF3BCourseKeys(key)
+function slopeMgrForm:checkF3BDataComplete()
 
-   -- start button (start point will be our left point in F3B)
-   if(key==KEY_1) then
-     self.gpsBearLeft = self:scanGpsPoint ( self.checkBoxBearingL, "Starting position set" )
+  local complete = false
 
-   -- button bearing (will be our right point in F3B)
-   elseif(key==KEY_2) then
-     self.gpsBearRight = self:scanGpsPoint ( self.checkBoxBearingR, "Bearing point set" )
-
-   -- toggle to F3F-mode
-   elseif(key==KEY_4) then
-     if not ( self.gpsNewHome or self.gpsBearLeft or self.gpsBearRight ) then
-       self.mode = 1
-       form.reinit (1)
-     end
-   end
-   
-   -- disable F3F mode and hide course name if scan is started
-   if ( self.gpsNewHome or self.gpsBearLeft or self.gpsBearRight ) then
-      form.setButton(4,"F3F",DISABLED)
-      self.displayName = ""   
-   end
-
-   -- data complete 
-   if ( self.gpsBearLeft and self.gpsBearRight ) then
-
-      local bearing = gps.getBearing ( self.gpsBearLeft, self.gpsBearRight )
+  -- .. case of direct bearing input   
+  if ( self.gpsNewHome and self.valueBearingDirect ) then
+    self.bearing = self.valueBearingDirect
+	complete = true
 	  
-      -- calc home position, half distance away from start
-      self.gpsNewHome = gps.getDestination ( self.gpsBearLeft, self.f3bDist / 2, bearing )
-      self.action = string.format("F3B-course (%.0f degrees)", bearing )
+  -- .. case of A-Line scan
+  elseif ( self.gpsNewHome and self.gpsBearLeft and self.gpsBearRight ) then
+    -- get bearing (flight direction: -90°) from scanned A-Line
+    self.bearing = gps.getBearing ( self.gpsBearLeft, self.gpsBearRight ) - 90
+    if self.bearing < 0 then self.bearing = self.bearing + 360 end
+	complete = true
+  end
+  
+  -- display and enable 'ok' 
+  if ( complete ) then
+    -- calc home position, half distance away from scanned start
+    self.gpsNewHome = gps.getDestination ( self.gpsNewHome, self.f3bDist / 2, self.bearing )
 
-      form.setButton(5, "Ok", ENABLED)
-   end
-   
+    -- display
+    self.action = string.format("%s: %s (%.0f%s)", "F3B-course", self:getDirDesc(self.bearing), self.bearing, utf8.char (176) )
+    form.setButton(5, "Ok", ENABLED)
+  end
 end
 
 --------------------------------------------------------------------------------------------
 -- observe keys of scan page
 function slopeMgrForm:slopeScanKeyPressed(key)
 
+   -- start button
+   if(key==KEY_1) then
+     self.gpsNewHome = self:scanGpsPoint ( self.checkBoxSlope, "Starting position set" )
+
+   -- button bearing left 
+   elseif(key==KEY_2 and self.leftRightScanEnabled) then
+     self.gpsBearLeft = self:scanGpsPoint ( self.checkBoxBearingL, "Left bearing point set" )
+
+   -- button bearing right
+   elseif(key==KEY_3 and self.leftRightScanEnabled) then
+     self.gpsBearRight = self:scanGpsPoint ( self.checkBoxBearingR, "Right bearing point set" )
+
+   -- toggle F3F/F3B-mode
+   elseif(key==KEY_4 and self.courseTypeToggleEnabled) then
+       if ( self.mode == 1) then self.mode = 2
+       elseif ( self.mode == 2) then self.mode = 1 end
+       form.reinit (1)
+   end
+   
+   -- disable F3F/F3B toggle button and hide course name if scan is started
+   if ( self.gpsNewHome or self.gpsBearLeft or self.gpsBearRight ) then
+     self:enableCourseToggle ( false )
+     self.displayName = ""   
+   end
+
+   -- Data complete ?
    if self.mode == 1 then
-      self:handleF3FSlopeKeys(key)
+      self:checkF3FDataComplete()
    elseif self.mode == 2 then
-      self:handleF3BCourseKeys(key)
+      self:checkF3BDataComplete()
    end
 
    -- button OK	/ Cancel 
    if(key==KEY_5) then
    
-     if ( self.gpsNewHome and self.gpsBearLeft and self.gpsBearRight ) then
-       -- set home and calc bearing
+     -- data complete ?
+     if ( self.gpsNewHome and self.bearing ) then
+       -- set home, bearing and mode to slope object
        self.slope.gpsHome = self.gpsNewHome
-       self.slope.bearing = gps.getBearing ( self.gpsBearLeft, self.gpsBearRight )
-
+       self.slope.bearing = self.bearing
        self.slope.mode = self.mode
+
        -- F3B: A-Base always left, left Base is defined as start point
        if (self.mode == 2) then
          self.slope.aBase = self.globalVar.direction.LEFT
@@ -279,22 +401,31 @@ function slopeMgrForm:slopeScanKeyPressed(key)
        -- cancel - beep
        system.playBeep (2, 1000, 200)
      end
-
    end
-     
 end  
 
+--------------------------------------------------------------------------------------------
+  -- Section Display
 --------------------------------------------------------------------------------------------
 -- calculate wind direction
 function slopeMgrForm:getWindDir ( bearing )
 
-  local windDir = -1
-  local windDirDesc = "undefined"
-	
+  -- get wind direction from slope bearing
+  local windDir
+  if bearing < 90 then windDir = bearing + 270 else windDir = bearing - 90 end
+ 
+  return windDir
+end
+ 
+--------------------------------------------------------------------------------------------
+-- get Description
+function slopeMgrForm:getDirDesc ( dir )
+
+  local dirDesc = "undefined"
   local angle, low, high
 	  
- -- read wind direction descriptions from file
- local filespec = self.dataDir .. "/windDir-" ..self.globalVar.lng.. ".jsn"	  
+ -- read direction descriptions from file
+ local filespec = self.dataDir .. "/direct-" ..self.globalVar.lng.. ".jsn"	  
  local desc
  local file = io.readall( filespec )
 
@@ -304,27 +435,30 @@ function slopeMgrForm:getWindDir ( bearing )
      self.handleErr ("can not open file: '" ..filespec .."'")	  
   end
 
-  -- get wind direction from slope bearing
-  if bearing < 90 then windDir = bearing + 270 else windDir = bearing - 90 end
-	
+  -- find 
   for i = 0, 15, 1 do
      angle = i * 22.5
 
-     -- calculate range for wind direction
+     -- calculate range for direction
      low = angle - 11.25
      if low < 0 then low = low+360 end
      local high = angle + 11.25
      if high > 360 then high = high -360 end
 
      -- inside ?
-     if ( windDir > low and windDir < high) then
-        if (desc) then windDirDesc = desc [i+1] end
+     local inside = false
+	 if ( i==0 and ( dir > low or dir < high ) ) then
+	 inside = true	 
+     elseif ( dir > low and dir < high) then 
+	 inside = true 
+	 end	
+	 if ( inside ) then
+        if (desc) then dirDesc = desc [i+1] end
         break
      end
   end
-  return windDirDesc, windDir	  -- maybe: ( South, 185 )	
+  return dirDesc
 end
-
 
 --------------------------------------------------------------------------------------------
 function slopeMgrForm:printSlopeForm()
