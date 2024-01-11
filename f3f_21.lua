@@ -270,12 +270,12 @@ function f3fRun:launch ()
   self.launchTime = system.getTimeCounter()
   self.remainingCountdown = self.countdownTime
 
-  system.playFile ( globalVar.resource.audioStart, AUDIO_IMMEDIATE )
+  transmitter:playAudioFile ( globalVar.resource.audioStart, AUDIO_IMMEDIATE )
   
   -- in F3F and F3B-Speed mode announce countdown time
   if ((slope.mode ~= 2) or (basicCfg.f3bMode ~= 2)) then
     system.playNumber (self.remainingCountdown, 0)
-    system.playFile ( globalVar.resource.audioSeconds, AUDIO_QUEUE )
+    transmitter:playAudioFile ( globalVar.resource.audioSeconds, AUDIO_QUEUE )
   end
 end
 
@@ -297,7 +297,7 @@ function f3fRun:startRun ( timeout )
   end
   
   self.f3fStartTime = system.getTimeCounter()
-  system.playFile ( globalVar.resource.audioCourse, AUDIO_QUEUE )
+  transmitter:playAudioFile ( globalVar.resource.audioCourse, AUDIO_QUEUE )
   
   -- start timer for speed measurement after 1,5 sec.
   if ( self.curSpeed and self:isStatus (self.status.F3F_RUN) ) then
@@ -352,9 +352,9 @@ function f3fRun:distanceDone ()
   	     local endTime = system.getTimeCounter()
         self.flightTime = endTime-self.f3fStartTime
 		  
-        system.playFile ( globalVar.resource.audioTime, AUDIO_QUEUE )
+        transmitter:playAudioFile ( globalVar.resource.audioTime, AUDIO_QUEUE )
         system.playNumber (self.flightTime / 1000, 1)
-        system.playFile ( globalVar.resource.audioSeconds, AUDIO_QUEUE )
+        transmitter:playAudioFile ( globalVar.resource.audioSeconds, AUDIO_QUEUE )
 		   
         self.curStatus = self.status.ON_HOLD
       end
@@ -667,10 +667,10 @@ end
 function basicCfg:toggleF3bMode()
   if ( self.f3bMode == 1 ) then 
     self.f3bMode = 2
-    system.playFile(globalVar.resource.audioF3bDistance, AUDIO_QUEUE)
+    transmitter:playAudioFile (globalVar.resource.audioF3bDistance, AUDIO_QUEUE)
   else 
     self.f3bMode = 1
-    system.playFile(globalVar.resource.audioF3bSpeed, AUDIO_QUEUE)  	
+    transmitter:playAudioFile (globalVar.resource.audioF3bSpeed, AUDIO_QUEUE)  	
   end
   system.pSave( "f3bMode", self.f3bMode )
   f3fRun:init ()
@@ -761,6 +761,16 @@ function transmitter:observeCenterShift ()
   return globalVar.direction.UNDEF
 end
 
+--------------------------------------------------------------------------------------------
+-- play audio file
+
+function transmitter:playAudioFile ( resourceString, playbackType )
+
+  -- input string may contain placeholder for data directory
+  local res = string.gsub (resourceString, "$dataDir", dataDirRel)
+  system.playFile ( res, playbackType )
+end
+
 -- ===============================================================================================
 -- ===============================================================================================
 -- ========== Object: slope                                                             ==========
@@ -820,10 +830,10 @@ end
 function slope:toggleABase ()
   if ( self.aBase == globalVar.direction.LEFT ) then 
     self.aBase = globalVar.direction.RIGHT 
-    system.playFile(globalVar.resource.audioARight, AUDIO_QUEUE)
+    transmitter:playAudioFile (globalVar.resource.audioARight, AUDIO_QUEUE)
   else
     self.aBase = globalVar.direction.LEFT
-    system.playFile(globalVar.resource.audioALeft, AUDIO_QUEUE)
+    transmitter:playAudioFile (globalVar.resource.audioALeft, AUDIO_QUEUE)
   end
 
   self:persist ()	
@@ -847,7 +857,7 @@ function slope:defineNewCenter ()
    
    self.gpsHome = newHome
    self:persist ( nil )
-   system.playFile(globalVar.resource.audioCenter, AUDIO_QUEUE)	  
+   transmitter:playAudioFile (globalVar.resource.audioCenter, AUDIO_QUEUE)	  
 end
 
 --------------------------------------------------------------------------------------------
@@ -1303,7 +1313,7 @@ local function loop()
   -- should be a quality metric for the launch phase.
   if ( f3fRun.timerStartSpeed > -1 ) then
      if (system.getTimeCounter() - f3fRun.timerStartSpeed >= 1500 ) then
-        system.playFile(globalVar.resource.audioSpeed, AUDIO_QUEUE)  
+        transmitter:playAudioFile (globalVar.resource.audioSpeed, AUDIO_QUEUE)  
         system.playNumber ( f3fRun.curSpeed , 0)
         f3fRun.timerStartSpeed = -1
      end
