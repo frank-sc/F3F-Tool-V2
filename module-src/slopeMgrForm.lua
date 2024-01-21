@@ -286,7 +286,7 @@ function slopeMgrForm:scanGpsPoint ( checkBox, successMsg )
 end
 
 --------------------------------------------------------------------------------------------
-function slopeMgrForm:checkF3FDataComplete()
+function slopeMgrForm:checkDataComplete()
 
   local complete = false
   
@@ -295,47 +295,30 @@ function slopeMgrForm:checkF3FDataComplete()
     self.bearing = self.valueBearingDirect
 	complete = true
 
-   -- .. case of slope scan
+   -- .. case of slope / A-Line - scan
   elseif ( self.gpsNewHome and self.gpsBearLeft and self.gpsBearRight ) then
     self.bearing = gps.getBearing ( self.gpsBearLeft, self.gpsBearRight )
-	complete = true
+
+    -- in case of A-Line scan (F3B) flight course is -90 deg. from scanned A-Line
+    if ( self.mode == 2 ) then
+      self.bearing = self.bearing - 90
+      if self.bearing < 0 then self.bearing = self.bearing + 360 end
+    end
+
+	  complete = true
   end
 
-  -- display and enable 'ok'
-  if ( complete ) then
+  -- display wind direction (F3F) and enable 'ok'
+  if ( complete and self.mode == 1 ) then
     local dir = self:getWindDir (self.bearing) 	
     self.action = string.format("%s: %s (%.0f%s)", "Slope", self:getDirDesc(dir), dir, utf8.char (176) )
     form.setButton(5, "Ok", ENABLED)
-  end   
-end
 
---------------------------------------------------------------------------------------------
-function slopeMgrForm:checkF3BDataComplete()
-
-  local complete = false
-
-  -- .. case of direct bearing input   
-  if ( self.gpsNewHome and self.valueBearingDirect ) then
-    self.bearing = self.valueBearingDirect
-	complete = true
-	  
-  -- .. case of A-Line scan
-  elseif ( self.gpsNewHome and self.gpsBearLeft and self.gpsBearRight ) then
-    -- get bearing (flight direction: -90°) from scanned A-Line
-    self.bearing = gps.getBearing ( self.gpsBearLeft, self.gpsBearRight ) - 90
-    if self.bearing < 0 then self.bearing = self.bearing + 360 end
-	complete = true
-  end
-  
-  -- display and enable 'ok' 
-  if ( complete ) then
-    -- calc home position, half distance away from scanned start
-    self.gpsNewHome = gps.getDestination ( self.gpsNewHome, self.f3bDist / 2, self.bearing )
-
-    -- display
+  -- display course (F3B) and enable 'ok'
+  elseif ( complete and self.mode == 2 ) then
     self.action = string.format("%s: %s (%.0f%s)", "F3B-course", self:getDirDesc(self.bearing), self.bearing, utf8.char (176) )
     form.setButton(5, "Ok", ENABLED)
-  end
+  end   
 end
 
 --------------------------------------------------------------------------------------------
@@ -345,14 +328,17 @@ function slopeMgrForm:slopeScanKeyPressed(key)
    -- start button
    if(key==KEY_1) then
      self.gpsNewHome = self:scanGpsPoint ( self.checkBoxSlope, "Starting position set" )
+     self:checkDataComplete ()
 
    -- button bearing left 
    elseif(key==KEY_2 and self.leftRightScanEnabled) then
      self.gpsBearLeft = self:scanGpsPoint ( self.checkBoxBearingL, "Left bearing point set" )
+     self:checkDataComplete ()
 
    -- button bearing right
    elseif(key==KEY_3 and self.leftRightScanEnabled) then
      self.gpsBearRight = self:scanGpsPoint ( self.checkBoxBearingR, "Right bearing point set" )
+     self:checkDataComplete ()
 
    -- toggle F3F/F3B-mode
    elseif(key==KEY_4 and self.courseTypeToggleEnabled) then
@@ -367,19 +353,18 @@ function slopeMgrForm:slopeScanKeyPressed(key)
      self.displayName = ""   
    end
 
-   -- Data complete ?
-   if self.mode == 1 then
-      self:checkF3FDataComplete()
-   elseif self.mode == 2 then
-      self:checkF3BDataComplete()
-   end
-
    -- button OK	/ Cancel 
    if(key==KEY_5) then
    
      -- data complete ?
      if ( self.gpsNewHome and self.bearing ) then
-       -- set home, bearing and mode to slope object
+      
+      -- F3B: calc home position, half distance away from scanned start
+      if (self.mode == 2) then
+        self.gpsNewHome = gps.getDestination ( self.gpsNewHome, self.f3bDist / 2, self.bearing )
+      end
+
+      -- set home, bearing and mode to slope object
        self.slope.gpsHome = self.gpsNewHome
        self.slope.bearing = self.bearing
        self.slope.mode = self.mode
