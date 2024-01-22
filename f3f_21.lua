@@ -935,7 +935,12 @@ function slopeManager:closeSlopeForm()
   -- unload form module
   self.formModule = nil
   package.loaded [ self.formModuleName ] = nil
-  collectgarbage("collect")
+
+  -- reinit current run on new course
+  f3fRun:init ()
+
+  -- clear up
+  collectgarbage("collect")  
  
   -- print("Slope/GC Count after load f3fRun : " .. collectgarbage("count") .. " kB")
 end 
