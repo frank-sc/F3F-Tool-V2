@@ -940,7 +940,7 @@ function slopeManager:closeSlopeForm()
   f3fRun:init ()
 
   -- clear up
-  collectgarbage("collect")  
+  collectgarbage("collect")
  
   -- print("Slope/GC Count after load f3fRun : " .. collectgarbage("count") .. " kB")
 end 
@@ -996,24 +996,46 @@ function display:showInsideStatus ( inside_status )
 end
 
 --------------------------------------------------------------------------------------------
+function display:showF3bCompetitionInfo ()
+
+  -- only in F3B-mode
+  if ( slope.mode == 2 ) then
+    lcd.drawText(103,1,"F3B",FONT_BOLD)
+    if (basicCfg.f3bMode == 1) then
+      lcd.drawText(103,17,"Speed",FONT_MINI)
+    elseif (basicCfg.f3bMode == 2) then
+      lcd.drawText(103,17,"Distance",FONT_MINI)
+    end
+  end
+end
+
+--------------------------------------------------------------------------------------------
 -- helps to find starting position, if it is not marked on the slope
 
 function display:showDistanceToStart ()
 
-   -- skip in F3B mode
-   if ( slope.mode == 2) then return end
+  -- F3F: use GPSHome from system, middle of the course+
+  local distToStart
+  if ( slope.mode == 1 ) then
+    distToStart = f3fRun.curDist
+	
+  -- F3B: recalc distance to startpoint at A-Line	
+  elseif ( slope.mode == 2 and slope:isDefined () and f3fRun.curPosition ) then
+	f3bStart = gps.getDestination ( slope.gpsHome, (-1) * basicCfg.f3bDistance / 2, slope.bearing )
+	distToStart = gps.getDistance (f3bStart, f3fRun.curPosition)
+  end
 
-   if ( f3fRun.curDist ) then
-     local text = ""
-   if ( f3fRun.curDist > 1000 ) then  
-     text = ">1000"
-   else
-     text = string.format("%.1f", f3fRun.curDist)
-   end
-     lcd.drawText(132 - lcd.getTextWidth(FONT_BOLD,text),35, text, FONT_BOLD)  
-     lcd.drawText(135,40, "m", FONT_MINI)  
-     lcd.drawText(106,53, "to Start", FONT_MINI)  
-   end
+  if ( distToStart ) then
+    local text = ""
+    if ( distToStart > 1000 ) then  
+      text = ">1000"
+    else
+      text = string.format( "%.1f", distToStart )
+    end
+    lcd.drawText(132 - lcd.getTextWidth(FONT_BOLD,text),35, text, FONT_BOLD)  
+    lcd.drawText(135,40, "m", FONT_MINI)  
+    lcd.drawText(106,53, "to Start", FONT_MINI)  
+  end
 end
 
 --------------------------------------------------------------------------------------------
@@ -1026,6 +1048,9 @@ function display:printLegCount ()
     local text = string.format("%.0f", f3fRun.rounds)
     lcd.drawText(80 - lcd.getTextWidth(FONT_MAXI,text), 23, text, FONT_MAXI)
   end
+
+  -- show competition info
+  self:showF3bCompetitionInfo ()
 
   -- and a little time display	
   local curFlightTime = system.getTimeCounter() - f3fRun.f3fStartTime
@@ -1040,18 +1065,13 @@ function display:printSpeedInfo ()
    if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) or
         f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
      
-     self.printLegCount ()
+     self:printLegCount ()
 	 
      if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) ) then
        self:showInsideStatus(f3fRun.f3fRunData.insideFlag)
      else  -- Timeout-Status, flag for launch phase still relevant
        self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
      end	 
-
-    -- a little time display	
---	 local curFlightTime = system.getTimeCounter() - f3fRun.f3fStartTime
---     local text = string.format("%.0f%s",curFlightTime / 1000,"")
---    lcd.drawText(120,45,text,FONT_BOLD)  
 
   -- after the run: show flight time and course info
    else     
@@ -1062,6 +1082,7 @@ function display:printSpeedInfo ()
      
      self:showInsideStatus(f3fRun.f3fRunData.insideFlag)
      self:showDistanceToStart () 	 
+     self:showF3bCompetitionInfo ()
   end
 end
 
@@ -1089,17 +1110,14 @@ function display:printFlightInfo (width, height)
       -- F3F-mode
       if ( slope.mode == 1 ) then
         self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
-        self:showDistanceToStart ()
  
       -- F3B-mode	
       elseif ( slope.mode == 2 ) then
-        lcd.drawText(95,5,"  F3B  ",FONT_BOLD)
-        if (basicCfg.f3bMode == 1) then
-           lcd.drawText(85,25,"  Speed  ",FONT_BOLD)
-        elseif (basicCfg.f3bMode == 2) then
-           lcd.drawText(75,25,"  Distance  ",FONT_BOLD)
-      end
-    end		
+        self:showF3bCompetitionInfo ()
+	  end
+
+      -- distance to start point
+      self:showDistanceToStart ()
 	end
 	 	
   -- show error in large letters when occurs after start
@@ -1114,7 +1132,8 @@ function display:printFlightInfo (width, height)
      local text = string.format("%.0f%s", f3fRun.remainingCountdown,"")
      lcd.drawText(85 - lcd.getTextWidth(FONT_MAXI,text), 23, text, FONT_MAXI)
      self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
- 
+     self:showF3bCompetitionInfo ()
+
   -- show competition info depending on F3F / F3B mode
  
   -- F3B-Distance mode
@@ -1126,7 +1145,6 @@ function display:printFlightInfo (width, height)
     self:printSpeedInfo ()  
   end
 end 
-
 
 -- ==========================================================================================================================
 -- ==========================================================================================================================
