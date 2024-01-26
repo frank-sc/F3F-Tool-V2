@@ -116,6 +116,7 @@ local basicCfg = nil
 local transmitter = nil
 local slope = nil
 local slopeManager = nil
+local display = nil
 
 -- ===============================================================================================
 -- ===============================================================================================
@@ -951,7 +952,11 @@ end
 -- ===============================================================================================
 -- ===============================================================================================
 
-local display = {}
+display = { 
+  yTop = 0,
+  yBottom = 0,
+  yCounter = 0
+}
 
 --------------------------------------------------------------------------------------------
 function display:setColor()
@@ -971,28 +976,51 @@ end
 
 function display:showInsideStatus ( inside_status )
 
-   -- skip in F3B mode
-   if ( slope.mode == 2) then return end
+  -- skip in F3B mode
+  if ( slope.mode == 2) then return end
 
-   if ( f3fRun.curDir == globalVar.direction.UNDEF ) then return end
---   lcd.drawText(100,10,"  |----|  ",FONT_BOLD)
+  if ( f3fRun.curDir == globalVar.direction.UNDEF ) then return end
 
-   if (inside_status and f3fRun.curDir == globalVar.direction.RIGHT) then
-      lcd.drawText(100,10,"  |  --|  ",FONT_BOLD)
-   elseif (inside_status and f3fRun.curDir == globalVar.direction.LEFT) then
-      lcd.drawText(100,10,"  |--  |  ",FONT_BOLD)
-   elseif ( f3fRun.curDir == globalVar.direction.RIGHT ) then
-      lcd.drawText(100,10,"  |    |--",FONT_BOLD)
-   elseif ( f3fRun.curDir == globalVar.direction.LEFT ) then
-      lcd.drawText(100,10,"--|    |  ",FONT_BOLD)
-   end
+  -- yPositions, dependent from screen resolution
+  local y1 = self.yTop + 13
+  local y2 = self.yTop + 19
+  local y3 = self.yTop + 26
   
-   -- A-Base anzeigen
-   local aPos = 102
-   if ( slope.aBase == globalVar.direction.RIGHT ) then
-      aPos = aPos + 23
-   end	 
-   lcd.drawText( aPos, 1, "  A", FONT_MINI)  
+  -- draw turn lines
+  lcd.drawLine ( 111, y1, 111, y3)
+  lcd.drawLine ( 112, y1, 112, y3)
+
+  lcd.drawLine ( 134, y1, 134, y3)
+  lcd.drawLine ( 135, y1, 135, y3)
+
+  -- draw model position
+  --  "  |  --|  "
+  if (inside_status and f3fRun.curDir == globalVar.direction.RIGHT) then
+    lcd.drawLine ( 124, y2, 132, y2)
+    lcd.drawLine ( 124, y2+1, 132, y2+1)
+
+  -- "  |--  |  "
+  elseif (inside_status and f3fRun.curDir == globalVar.direction.LEFT) then
+    lcd.drawLine ( 114, y2, 122, y2)
+    lcd.drawLine ( 114, y2+1, 122, y2+1)
+
+  -- "  |    |--"
+  elseif ( f3fRun.curDir == globalVar.direction.RIGHT ) then
+    lcd.drawLine ( 137, y2, 145, y2)
+    lcd.drawLine ( 137, y2+1, 145, y2+1)
+
+  -- "--|    |  "
+  elseif ( f3fRun.curDir == globalVar.direction.LEFT ) then
+    lcd.drawLine ( 101, y2, 109, y2)
+    lcd.drawLine ( 101, y2+1, 109, y2+1)
+  end
+ 
+  -- A-Base anzeigen
+  local aPos = 108
+  if ( slope.aBase == globalVar.direction.RIGHT ) then
+     aPos = aPos + 23
+  end	 
+  lcd.drawText( aPos, self.yTop, "A", FONT_MINI)  
 end
 
 --------------------------------------------------------------------------------------------
@@ -1000,11 +1028,11 @@ function display:showF3bCompetitionInfo ()
 
   -- only in F3B-mode
   if ( slope.mode == 2 ) then
-    lcd.drawText(103,1,"F3B",FONT_BOLD)
+    lcd.drawText(103, self.yTop + 1, "F3B", FONT_NORMAL)
     if (basicCfg.f3bMode == 1) then
-      lcd.drawText(103,17,"Speed",FONT_MINI)
+      lcd.drawText(103, self.yTop + 18, "Speed", FONT_MINI)
     elseif (basicCfg.f3bMode == 2) then
-      lcd.drawText(103,17,"Distance",FONT_MINI)
+      lcd.drawText(103, self.yTop + 18, "Distance", FONT_MINI)
     end
   end
 end
@@ -1032,9 +1060,10 @@ function display:showDistanceToStart ()
     else
       text = string.format( "%.1f", distToStart )
     end
-    lcd.drawText(132 - lcd.getTextWidth(FONT_BOLD,text),35, text, FONT_BOLD)  
-    lcd.drawText(135,40, "m", FONT_MINI)  
-    lcd.drawText(106,53, "to Start", FONT_MINI)  
+    lcd.drawText(132 - lcd.getTextWidth(FONT_BOLD,text), self.yBottom, text, FONT_BOLD)  
+    lcd.drawText(135, self.yBottom + 5, "m", FONT_MINI)  
+    lcd.drawText(106, self.yBottom + 18, "to Start", FONT_MINI)  
+
   end
 end
 
@@ -1044,9 +1073,9 @@ function display:printLegCount ()
 
   -- show legs (rounds)
   if(f3fRun.rounds) then
-    lcd.drawText(10,5, "Legs:", FONT_BOLD)
+    lcd.drawText(10, self.yTop+4, "Legs:", FONT_BOLD)
     local text = string.format("%.0f", f3fRun.rounds)
-    lcd.drawText(80 - lcd.getTextWidth(FONT_MAXI,text), 23, text, FONT_MAXI)
+    lcd.drawText(80 - lcd.getTextWidth(FONT_MAXI,text), self.yCounter, text, FONT_MAXI)
   end
 
   -- show competition info
@@ -1055,7 +1084,7 @@ function display:printLegCount ()
   -- and a little time display	
   local curFlightTime = system.getTimeCounter() - f3fRun.f3fStartTime
   local text = string.format("%.0f%s",curFlightTime / 1000,"")
-  lcd.drawText(120,45,text,FONT_BOLD)  
+  lcd.drawText(120, self.yBottom + 10, text,FONT_BOLD)  
 end
 
 --------------------------------------------------------------------------------------------
@@ -1076,9 +1105,9 @@ function display:printSpeedInfo ()
   -- after the run: show flight time and course info
    else     
      -- flight time  
-     lcd.drawText(10,5, "Time:", FONT_BOLD)
+     lcd.drawText(10, self.yTop + 4, "Time:", FONT_BOLD)
      local text = string.format("%.2f%s",f3fRun.flightTime / 1000,"")
-     lcd.drawText(10,23,text,FONT_MAXI) 
+     lcd.drawText(10, self.yCounter,text,FONT_MAXI) 
      
      self:showInsideStatus(f3fRun.f3fRunData.insideFlag)
      self:showDistanceToStart () 	 
@@ -1091,16 +1120,41 @@ end
 
 function display:printFlightInfo (width, height)
 
+  local yDistStart = 0
   self:setColor ()
+
+  -- draw separator on high resolution screen
+  if (height > 80) then
+    lcd.drawLine(0,0,157, 0)  
+  end  
 
   -- prior to first run: show splash screen and course information
   if ( f3fRun and f3fRun:isStatus ( f3fRun.status.INIT )) then
 
-    lcd.drawText(14,-1, "F3F",FONT_MAXI)  
-    lcd.drawText(6,28, "Tool",FONT_MAXI)  
-    
+    -- DC 24 II, larger display: 480 * 480 px.
+    if (height > 80) then
+      lcd.drawText(11,3, "F3F",FONT_MAXI)  
+      lcd.drawText(6,34, "Tool",FONT_MAXI)  
+      lcd.drawText(8,73, "Version " .. appVersion, FONT_NORMAL)  
+
+      self.yTop = 8
+      self.yBottom = 60
+      self.yCounter = 33
+	  
+	  
+	  -- 'old' display: 320 * 240 px.  
+	  else
+      lcd.drawText(10,-1, "F3F",FONT_MAXI)  
+      lcd.drawText(10,32, "Tool",FONT_BIG)  
+      lcd.drawText(10,53, "Version " .. appVersion, FONT_MINI)  	   
+
+      self.yTop = 1
+      self.yBottom = 35
+      self.yCounter = 23
+	  end   
+
+    -- on error show message on splash screen
     if (globalVar.errorStatus > 0) then
-      -- on error show message on splash screen
       lcd.drawText(80,5, errorTable [globalVar.errorStatus][1],FONT_MINI)  
       lcd.drawText(80,18, errorTable [globalVar.errorStatus][2],FONT_MINI)  
       lcd.drawText(80,31, errorTable [globalVar.errorStatus][3],FONT_MINI)  
@@ -1128,9 +1182,10 @@ function display:printFlightInfo (width, height)
 
   -- start phase: show countdown
   elseif ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
-     lcd.drawText(10,5, "Launch:", FONT_BOLD)
+     lcd.drawText(10, self.yTop+4, "Launch:", FONT_BOLD)
      local text = string.format("%.0f%s", f3fRun.remainingCountdown,"")
-     lcd.drawText(85 - lcd.getTextWidth(FONT_MAXI,text), 23, text, FONT_MAXI)
+     lcd.drawText(85 - lcd.getTextWidth(FONT_MAXI,text), self.yCounter, text, FONT_MAXI)
+
      self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
      self:showF3bCompetitionInfo ()
 
@@ -1158,7 +1213,7 @@ local function init()
   collectgarbage("collect") 
 
   -- register display first ( maybe needed for error message)
-  system.registerTelemetry(1, appName .. " - Vers. " .. appVersion, 2,
+  system.registerTelemetry(1, appName, 2,
       function ( width, height ) display:printFlightInfo ( width, height ) end )
 
    -- check device type, this Version does not run on generation 1 hardware (monochrome display)
