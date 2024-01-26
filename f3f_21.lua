@@ -285,12 +285,8 @@ end
 
 function f3fRun:startRun ( timeout )
   
-  -- in F3B-Distance mode go directly on hold and just count legs
-  if ((slope.mode == 2) and (basicCfg.f3bMode == 2)) then
-     self.curStatus = self.status.ON_HOLD
-  
   -- timeout - late entry ocurred   
-  elseif (timeout) then
+  if (timeout) then
      self.curStatus = self.status.TIMEOUT
   else
   -- regular f3f-start 
@@ -316,9 +312,11 @@ function f3fRun:distanceDone ()
      system.playBeep (0, 700, 300)  
    end
    
-   -- in F3B-mode: count more rounds after 4 rounds (status 2: ON_HOLD)
-   if ( (slope.mode == 2) and ( self:isStatus ( self.status.ON_HOLD))) then
+   -- in F3B-Distance mode: always count legs
+   if ((slope.mode == 2) and (basicCfg.f3bMode == 2)) then
      self.rounds = self.rounds+1
+     self:setNextTurnDir ()
+     return
    end
 
    local maxRounds
@@ -953,6 +951,8 @@ end
 -- ===============================================================================================
 
 display = { 
+  resolution = nil,      -- nil: undefined / 1: old display 320 * 240 px 
+                         --                  2: new display 480 * 480 px (DC/DS 24 II)
   yTop = 0,
   yBottom = 0,
   yCounter = 0
@@ -972,12 +972,31 @@ function display:setColor()
 end
 
 --------------------------------------------------------------------------------------------
+function display:showSplashScreen ()
+
+  if ( self.resolution == 1 ) then
+    lcd.drawText(10,-1, "F3F",FONT_MAXI)  
+    lcd.drawText(10,32, "Tool",FONT_BIG)  
+    lcd.drawText(10,53, "Version " .. appVersion, FONT_MINI)  	   
+
+  elseif ( self.resolution == 2 ) then
+    lcd.drawText(11,3, "F3F",FONT_MAXI)  
+    lcd.drawText(6,34, "Tool",FONT_MAXI)  
+    lcd.drawText(8,73, "Version " .. appVersion, FONT_NORMAL)  
+  end
+  
+  -- on error show message on splash screen
+  if (globalVar.errorStatus > 0) then
+    lcd.drawText(80,5, errorTable [globalVar.errorStatus][1],FONT_MINI)  
+    lcd.drawText(80,18, errorTable [globalVar.errorStatus][2],FONT_MINI)  
+    lcd.drawText(80,31, errorTable [globalVar.errorStatus][3],FONT_MINI)  
+  end
+end
+
+--------------------------------------------------------------------------------------------
 -- graphic display of position inside / outside,
 
 function display:showInsideStatus ( inside_status )
-
-  -- skip in F3B mode
-  if ( slope.mode == 2) then return end
 
   if ( f3fRun.curDir == globalVar.direction.UNDEF ) then return end
 
@@ -1024,20 +1043,6 @@ function display:showInsideStatus ( inside_status )
 end
 
 --------------------------------------------------------------------------------------------
-function display:showF3bCompetitionInfo ()
-
-  -- only in F3B-mode
-  if ( slope.mode == 2 ) then
-    lcd.drawText(103, self.yTop + 1, "F3B", FONT_NORMAL)
-    if (basicCfg.f3bMode == 1) then
-      lcd.drawText(103, self.yTop + 18, "Speed", FONT_MINI)
-    elseif (basicCfg.f3bMode == 2) then
-      lcd.drawText(103, self.yTop + 18, "Distance", FONT_MINI)
-    end
-  end
-end
-
---------------------------------------------------------------------------------------------
 -- helps to find starting position, if it is not marked on the slope
 
 function display:showDistanceToStart ()
@@ -1068,7 +1073,42 @@ function display:showDistanceToStart ()
 end
 
 --------------------------------------------------------------------------------------------
+function display:showAdditionalInfo ()
 
+  -- for F3F: show graphical 'inside-status' in upper right corner
+  if ( slope.mode == 1 ) then
+
+    -- use 'run-Data' during and after f3f-run ( coming from inside the course )     
+	if ( f3fRun:isStatus ( f3fRun.status.F3F_RUN ) or
+	     f3fRun:isStatus ( f3fRun.status.ON_HOLD ) ) then
+	  self:showInsideStatus(f3fRun.f3fRunData.insideFlag)
+
+    -- use 'launchPhase-Data' before run ( coming from outside the course )     
+	-- Status: INIT, STARTPHASE, TIMEOUT  
+    else 
+  	  self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
+    end
+  --------------------------------------------------------------------
+  -- for F3B: show 'F3B Speed' / 'F3B Distance' in upper right corner
+  elseif ( slope.mode == 2 ) then
+    lcd.drawText(103, self.yTop + 1, "F3B", FONT_NORMAL)
+    if (basicCfg.f3bMode == 1) then
+      lcd.drawText(103, self.yTop + 18, "Speed", FONT_MINI)
+    elseif (basicCfg.f3bMode == 2) then
+      lcd.drawText(103, self.yTop + 18, "Distance", FONT_MINI)
+    end
+  end
+  
+  --------------------------------------------------------------------
+  -- show 'distance to start' before launch ( INIT ) and after run ( ON_HOLD )
+  -- ( lower right corner )
+  if ( f3fRun:isStatus ( f3fRun.status.INIT ) or
+	   f3fRun:isStatus ( f3fRun.status.ON_HOLD ) ) then
+    display:showDistanceToStart ()
+  end
+end
+
+--------------------------------------------------------------------------------------------
 function display:printLegCount ()
 
   -- show legs (rounds)
@@ -1078,9 +1118,6 @@ function display:printLegCount ()
     lcd.drawText(80 - lcd.getTextWidth(FONT_MAXI,text), self.yCounter, text, FONT_MAXI)
   end
 
-  -- show competition info
-  self:showF3bCompetitionInfo ()
-
   -- and a little time display	
   local curFlightTime = system.getTimeCounter() - f3fRun.f3fStartTime
   local text = string.format("%.0f%s",curFlightTime / 1000,"")
@@ -1088,118 +1125,69 @@ function display:printLegCount ()
 end
 
 --------------------------------------------------------------------------------------------
-
-function display:printSpeedInfo ()
-
-   if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) or
-        f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
-     
-     self:printLegCount ()
-	 
-     if ( f3fRun:isStatus (f3fRun.status.F3F_RUN) ) then
-       self:showInsideStatus(f3fRun.f3fRunData.insideFlag)
-     else  -- Timeout-Status, flag for launch phase still relevant
-       self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
-     end	 
-
-  -- after the run: show flight time and course info
-   else     
-     -- flight time  
-     lcd.drawText(10, self.yTop + 4, "Time:", FONT_BOLD)
-     local text = string.format("%.2f%s",f3fRun.flightTime / 1000,"")
-     lcd.drawText(10, self.yCounter,text,FONT_MAXI) 
-     
-     self:showInsideStatus(f3fRun.f3fRunData.insideFlag)
-     self:showDistanceToStart () 	 
-     self:showF3bCompetitionInfo ()
-  end
-end
-
---------------------------------------------------------------------------------------------
 -- display all the interesting infos like countdown, legs, time ...
 
 function display:printFlightInfo (width, height)
+ 
+   -- initialize color
+   self:setColor ()
 
-  local yDistStart = 0
-  self:setColor ()
+  -- initilize resolution
+  if ( not self.resolution ) then
 
-  -- draw separator on high resolution screen
-  if (height > 80) then
+    -- DC 24 II, larger display: 480 * 480 px.
+    if (height > 80) then
+      self.resolution = 2
+      self.yTop = 8
+      self.yBottom = 60
+      self.yCounter = 33
+	  
+    -- 'old' display: 320 * 240 px.  
+	else
+      self.resolution = 1
+      self.yTop = 1
+      self.yBottom = 35
+      self.yCounter = 23
+	end 
+  end	
+
+  -- draw separator line on high resolution screen
+  if ( self.resolution == 2 ) then
     lcd.drawLine(0,0,157, 0)  
   end  
 
   -- prior to first run: show splash screen and course information
   if ( f3fRun and f3fRun:isStatus ( f3fRun.status.INIT )) then
+    self:showSplashScreen ()
 
-    -- DC 24 II, larger display: 480 * 480 px.
-    if (height > 80) then
-      lcd.drawText(11,3, "F3F",FONT_MAXI)  
-      lcd.drawText(6,34, "Tool",FONT_MAXI)  
-      lcd.drawText(8,73, "Version " .. appVersion, FONT_NORMAL)  
-
-      self.yTop = 8
-      self.yBottom = 60
-      self.yCounter = 33
-	  
-	  
-	  -- 'old' display: 320 * 240 px.  
-	  else
-      lcd.drawText(10,-1, "F3F",FONT_MAXI)  
-      lcd.drawText(10,32, "Tool",FONT_BIG)  
-      lcd.drawText(10,53, "Version " .. appVersion, FONT_MINI)  	   
-
-      self.yTop = 1
-      self.yBottom = 35
-      self.yCounter = 23
-	  end   
-
-    -- on error show message on splash screen
-    if (globalVar.errorStatus > 0) then
-      lcd.drawText(80,5, errorTable [globalVar.errorStatus][1],FONT_MINI)  
-      lcd.drawText(80,18, errorTable [globalVar.errorStatus][2],FONT_MINI)  
-      lcd.drawText(80,31, errorTable [globalVar.errorStatus][3],FONT_MINI)  
-	
-    else  
-
-      -- F3F-mode
-      if ( slope.mode == 1 ) then
-        self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
- 
-      -- F3B-mode	
-      elseif ( slope.mode == 2 ) then
-        self:showF3bCompetitionInfo ()
-	  end
-
-      -- distance to start point
-      self:showDistanceToStart ()
-	end
-	 	
-  -- show error in large letters when occurs after start
+  -- error after INIT: show in large letters
   elseif ( globalVar.errorStatus > 0) then
-     lcd.drawText(5,5, errorTable [globalVar.errorStatus][1].." "..errorTable [globalVar.errorStatus][2],FONT_BIG)  
-     lcd.drawText(5,30, errorTable [globalVar.errorStatus][3],FONT_BIG)
-
+    lcd.drawText(5,5, errorTable [globalVar.errorStatus][1].." "..errorTable [globalVar.errorStatus][2],FONT_BIG)  
+    lcd.drawText(5,30, errorTable [globalVar.errorStatus][3],FONT_BIG)
 
   -- start phase: show countdown
   elseif ( f3fRun:isStatus (f3fRun.status.STARTPHASE) ) then
-     lcd.drawText(10, self.yTop+4, "Launch:", FONT_BOLD)
-     local text = string.format("%.0f%s", f3fRun.remainingCountdown,"")
-     lcd.drawText(85 - lcd.getTextWidth(FONT_MAXI,text), self.yCounter, text, FONT_MAXI)
+    lcd.drawText(10, self.yTop+4, "Launch:", FONT_BOLD)
+    local text = string.format("%.0f%s", f3fRun.remainingCountdown,"")
+    lcd.drawText(85 - lcd.getTextWidth(FONT_MAXI,text), self.yCounter, text, FONT_MAXI)
 
-     self:showInsideStatus(f3fRun.launchPhaseData.insideFlag)
-     self:showF3bCompetitionInfo ()
-
-  -- show competition info depending on F3F / F3B mode
- 
-  -- F3B-Distance mode
-  elseif ((slope.mode == 2) and (basicCfg.f3bMode == 2)) then     
+  -- during run: show leg count and a little timer
+  elseif ( f3fRun:isStatus (f3fRun.status.TIMEOUT) or
+           f3fRun:isStatus (f3fRun.status.F3F_RUN) ) then
     self:printLegCount () 
 
-  -- F3F-mode
-  else
-    self:printSpeedInfo ()  
+  -- after the run: show Flight time
+  elseif ( f3fRun:isStatus (f3fRun.status.ON_HOLD) ) then
+    lcd.drawText(10, self.yTop + 4, "Time:", FONT_BOLD)
+    local text = string.format("%.2f%s",f3fRun.flightTime / 1000,"")
+    lcd.drawText(10, self.yCounter,text,FONT_MAXI) 
   end
-end 
+  
+  -- display some additional features if there is no error display
+  if (globalVar.errorStatus == 0) then
+    self:showAdditionalInfo ()
+  end
+end
 
 -- ==========================================================================================================================
 -- ==========================================================================================================================
