@@ -183,7 +183,8 @@ f3fRun = {
   curDir = nil,                  -- current position on left/right side from home
   nextTurnDir = nil,             -- side of expected next turn
   curSpeed = nil,                -- current speed (given from sensor)
-  
+  curHeading = nil,              -- current heading (flight direction)
+
   -- 'offsets' and 'inside-flags' for launch phase and f3f run.
   -- the values are always calculated independently from the current 
   -- f3f-status. So we know where we are if a status change occurs
@@ -442,7 +443,7 @@ end
 -- update current speed from sensor, calculate optimization offsets
 -- the whole magic of GPS and latency optimization
 
-function f3fRun:updateSpeedAndOptimizationData ( speed )
+function f3fRun:updateSpeedAndOptimizationData ( speed, heading )
 
   self.curSpeed = speed
   if ( self.curSpeed ) then
@@ -456,6 +457,13 @@ function f3fRun:updateSpeedAndOptimizationData ( speed )
      --        also add a static offset, this brought better results in flying tests, can't explain why
      self.launchPhaseData.offset =  (-1) * ((self.curSpeed/6 * (basicCfg.speedFaktorLaunchPhase/100)) + basicCfg.statOffsetLaunchPhase)
   end
+
+  --set heading ( angle related to slope edge )
+  self.curHeading = slope.bearing - heading
+  if (self.curHeading < 0) then 
+    self.curHeading = self.curHeading + 360
+  end
+
 end
 
 --------------------------------------------------------------------------------------------
@@ -464,14 +472,20 @@ end
 
 function f3fRun:checkFlyOut ( trackData )
 
-  if ( trackData.insideFlag and 
-     (self.curDist + trackData.offset) * math.abs ( math.cos (math.rad ( self.curBearing )))
-      > self.halfDistance) then
-  
-     trackData.insideFlag = false  
-     return true
+  if ( trackData.insideFlag ) then
+    local dist = self.curDist * math.abs ( math.cos (math.rad ( self.curBearing )))
+
+    local offset = trackData.offset
+    if ( self.curHeading ) then
+      offset = offset * math.abs ( math.cos (math.rad ( self.curHeading ))) 
+    end  
+ 
+    if ( dist + offset > self.halfDistance) then
+      trackData.insideFlag = false  
+      return true
+    end
   end
-  
+
   return false  
 end
 
@@ -481,14 +495,20 @@ end
 
 function f3fRun:checkFlyIn ( trackData )
 
-  if ( not trackData.insideFlag and 
-     (self.curDist + trackData.offset) * math.abs ( math.cos (math.rad ( self.curBearing ))) 
-      < self.halfDistance) then
+  if ( not trackData.insideFlag ) then
+    local dist = self.curDist * math.abs ( math.cos (math.rad ( self.curBearing )))
   
-     trackData.insideFlag = true 
-     return true
+    local offset = trackData.offset
+    if ( self.curHeading ) then
+      offset = offset * math.abs ( math.cos (math.rad ( self.curHeading ))) 
+    end  
+ 
+    if ( dist + offset < self.halfDistance) then
+      trackData.insideFlag = true
+      return true
+    end
   end
-  
+
   return false  
 end
 
@@ -506,7 +526,8 @@ end
 gpsSensor = {
    lat   = {desc="latSensor", id=nil, param=nil},
    lon   = {desc="lonSensor", id=nil, param=nil},    
-   speed = {desc="speedSensor", id=nil, param=nil}
+   speed = {desc="speedSensor", id=nil, param=nil},
+   heading = {desc="headingSensor", id=nil, param=nil}
 }
 
 --------------------------------------------------------------------------------------------
@@ -520,6 +541,9 @@ function gpsSensor:init ()
   
   self.speed.id = system.pLoad ( self.speed.desc )
   self.speed.param = system.pLoad ( self.speed.desc .. "Param" )
+
+  self.heading.id = system.pLoad ( self.heading.desc )
+  self.heading.param = system.pLoad ( self.heading.desc .. "Param" )
 
 end
     
@@ -585,6 +609,25 @@ function gpsSensor:getCurSpeed ()
      globalVar.errorStatus = 3
      return 0
    end  
+end
+
+--------------------------------------------------------------------------------------------
+function gpsSensor:getCurHeading ()
+
+  local sensorData
+  local sensorvalue = 0
+
+  if ( self.heading.id and self.heading.param ) then
+    sensorData = system.getSensorByID ( self.heading.id, self.heading.param )
+  end  
+  if(sensorData and sensorData.valid) then
+    sensorvalue =  sensorData.value
+ 
+    return sensorvalue
+  else
+    globalVar.errorStatus = 3
+    return 0
+  end  
 end
 
 -- ===============================================================================================
@@ -1310,9 +1353,10 @@ local function loop()
   f3fRun:updatePositionData ( gpsPos )
     
   -----------------------------------------------------------------------------  
-  -- update optimizaton values from speed
+  -- update optimizaton values from speed and heading
   local curSpeed = gpsSensor:getCurSpeed ()
-  f3fRun:updateSpeedAndOptimizationData ( curSpeed )
+  local curHeading = gpsSensor:getCurHeading ()
+  f3fRun:updateSpeedAndOptimizationData ( curSpeed, curHeading )
   
   -----------------------------------------------------------------------------
   -- was a Base passed in f3f-Run (using the optimization offsets INSIDE the course)

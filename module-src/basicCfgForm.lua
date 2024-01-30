@@ -40,7 +40,8 @@ local basicCfgForm = {
    compF3fDistance = nil,
    compSensorLat = nil,
    compSensorLon = nil,
-   compSensorSpeed = nil
+   compSensorSpeed = nil,
+   compSensorHeading = nil
 }
 
 --------------------------------------------------------------------------------------------
@@ -156,6 +157,12 @@ function basicCfgForm:initForm(formID)
   curIndex = self:findIndexForSensor (self.gpsSensor.speed.id, self.gpsSensor.speed.param)
   self.compSensorSpeed = form.addSelectbox (list, curIndex,true, nil, {width=200}) 
 
+  -- flight direction sensor
+  form.addRow (2)
+  form.addLabel({label="- Flight Dir.", width=110})
+  curIndex = self:findIndexForSensor (self.gpsSensor.heading.id, self.gpsSensor.heading.param)
+  self.compSensorHeading = form.addSelectbox (list, curIndex,true, nil, {width=200}) 
+
   print("GC Count after config init : " .. collectgarbage("count") .. " kB");	
 end  
 
@@ -197,6 +204,11 @@ function basicCfgForm:closeForm ()
   value = form.getValue ( self.compSensorSpeed )
   if (value and value>0) then 
     self.gpsSensor:setSensorValue ( self.gpsSensor.speed, self.sensorList[value])
+  end 
+
+  value = form.getValue ( self.compSensorHeading )
+  if (value and value>0) then 
+    self.gpsSensor:setSensorValue ( self.gpsSensor.heading, self.sensorList[value])
   end 
 end
 
