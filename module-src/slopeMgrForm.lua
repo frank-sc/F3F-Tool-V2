@@ -217,10 +217,11 @@ function slopeMgrForm:initSlopeForm (formID)
   form.addSpacer (150, 2)
   
   -- scan section
-  form.addRow(3)
+  form.addRow(4)
   form.addLabel({label = "Scan", width = 140, font=FONT_BOLD})
-  form.addLabel({label="Start:", width=55, font=FONT_NORMAL})
+  form.addLabel({label="Start:", width=50, font=FONT_NORMAL})
   self.checkBoxSlope = form.addCheckbox( false, nil, {enabled=false, width = 30})
+  form.addLabel({label = " ", width = 10, font=FONT_NORMAL})
 
   form.addRow(6)
   self.bearScan[1] = form.addLabel({label = scanText .. ":", width=75, font=FONT_BOLD})

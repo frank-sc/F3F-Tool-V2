@@ -184,6 +184,13 @@ f3fRun = {
   nextTurnDir = nil,             -- side of expected next turn
   curSpeed = nil,                -- current speed (given from sensor)
   curHeading = nil,              -- current heading (flight direction)
+  absCosHeading = nil,           -- cosinus heading (abs: always positive)
+
+  -- for calculation of heading and smoothening of cos value
+  lastLat = nil,                 -- last position
+  lastLon = nil,
+  prevCos_1 = nil,               -- last cosinus values
+  prevCos_2 = nil,
 
   -- 'offsets' and 'inside-flags' for launch phase and f3f run.
   -- the values are always calculated independently from the current 
@@ -445,9 +452,11 @@ end
 
 function f3fRun:updateSpeedAndOptimizationData ( speed, heading )
 
+  -- Speed  
+
   self.curSpeed = speed
   if ( self.curSpeed ) then
-  
+
      -- offset determination
      -- generally speed/6 is taken as 100% offset (max), what means 25m at speed of 150 km/h.
      -- this value can be reduced by a configurable speed faktor, which is taken as a percentage value (/100)
@@ -458,10 +467,58 @@ function f3fRun:updateSpeedAndOptimizationData ( speed, heading )
      self.launchPhaseData.offset =  (-1) * ((self.curSpeed/6 * (basicCfg.speedFaktorLaunchPhase/100)) + basicCfg.statOffsetLaunchPhase)
   end
 
-  --set heading ( angle related to slope edge )
-  self.curHeading = slope.bearing - heading
-  if (self.curHeading < 0) then 
-    self.curHeading = self.curHeading + 360
+  -- Heading
+
+  local absHeading = heading   -- heading to north
+
+  if ( absHeading ) then
+    -- heading related to slope edge
+    self.curHeading = slope.bearing - heading
+    if (self.curHeading < 0) then 
+      self.curHeading = self.curHeading + 360
+    end
+
+    -- store cosinus for later offset determination
+    self.absCosHeading = math.abs (math.cos (math.rad ( self.curHeading )))
+
+  -- if heading is not provided from sensor we calculate it from position data
+  else  
+    local lat, lon = gps.getValue (self.curPosition)
+
+    -- first occurance
+    if ( not (self.lastLat and self.lastLon) ) then
+      self.lastLat = lat
+      self.lastLon = lon
+
+    -- check if new position 
+    -- LAT and LON must have changed to avoid jump between 0, 90, 180, 270 deg.
+    elseif ( lat ~= self.lastLat and lon ~= self.lastLon ) then
+  
+      -- calc heading to north from last to current position
+      absHeading = gps.getBearing (gps.newPoint (self.lastLat, self.lastLon), self.curPosition)
+     
+      -- heading related to slope edge    
+      self.curHeading = slope.bearing - absHeading
+      if ( self.curHeading < 0 ) then 
+        self.curHeading = self.curHeading + 360
+      end
+
+      -- get cosinus and smoothen curve
+      -- it is easier to smoothen than the original heading curve
+      -- because cosinus has no 0/360 deg. jumps
+      local cosHead = math.abs (math.cos (math.rad ( self.curHeading )))
+
+      -- smoothen
+      if ( self.prevCos_1 and self.prevCos_2) then
+        self.absCosHeading = (2*cosHead + 2*self.prevCos_1 + self.prevCos_2) / 5
+      end
+      self.prevCos_2 = self.prevCos_1
+      self.prevCos_1 = cosHead
+
+      -- save for next use
+      self.lastLat = lat
+      self.lastLon = lon
+    end
   end
 
 end
@@ -476,8 +533,8 @@ function f3fRun:checkFlyOut ( trackData )
     local dist = self.curDist * math.abs ( math.cos (math.rad ( self.curBearing )))
 
     local offset = trackData.offset
-    if ( self.curHeading ) then
-      offset = offset * math.abs ( math.cos (math.rad ( self.curHeading ))) 
+    if ( self.absCosHeading ) then
+      offset = offset * self.absCosHeading 
     end  
  
     if ( dist + offset > self.halfDistance) then
@@ -499,8 +556,8 @@ function f3fRun:checkFlyIn ( trackData )
     local dist = self.curDist * math.abs ( math.cos (math.rad ( self.curBearing )))
   
     local offset = trackData.offset
-    if ( self.curHeading ) then
-      offset = offset * math.abs ( math.cos (math.rad ( self.curHeading ))) 
+    if ( self.absCosHeading ) then
+      offset = offset * self.absCosHeading 
     end  
  
     if ( dist + offset < self.halfDistance) then
@@ -511,11 +568,6 @@ function f3fRun:checkFlyIn ( trackData )
 
   return false  
 end
-
-
-
-
-
 
 -- ===============================================================================================
 -- ===============================================================================================
@@ -625,8 +677,7 @@ function gpsSensor:getCurHeading ()
  
     return sensorvalue
   else
-    globalVar.errorStatus = 3
-    return 0
+    return nil
   end  
 end
 
@@ -1278,8 +1329,8 @@ local function init()
       function ( key ) slopeManager:slopeScanKeyPressed ( key ) end,
       function () slopeManager:printSlopeForm () end,
       function () slopeManager:closeSlopeForm () end )
-  
-	   
+
+
   -- DEBUG
   -- print("GC Count : " .. collectgarbage("count") .. " kB");
 
