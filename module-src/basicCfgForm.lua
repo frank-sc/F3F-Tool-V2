@@ -105,6 +105,15 @@ function basicCfgForm:initForm(formID)
 
   -- build the display list - sensor labels are removed from list and preceded to telemetry entries
   -- and a corresponding sensor reference list without sensor labels
+
+  -- first entry: empty sensor
+  local emptySensor = {}
+  emptySensor.id = -1
+  emptySensor.param = -1
+  list[#list+1] = "---"
+  self.sensorList[#self.sensorList+1] = emptySensor
+
+  -- build list  
   for index,sensor in ipairs(sysSensors) do 
 
     -- only gps-relevant sensors

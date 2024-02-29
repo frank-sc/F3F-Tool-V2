@@ -602,14 +602,21 @@ end
 --------------------------------------------------------------------------------------------
 function gpsSensor:setSensorValue (sensorType, sensorValue)
 
-   sensorType.id = sensorValue.id
-   sensorType.param = sensorValue.param
+   -- empty sensor
+   if ( sensorValue.id == -1 and sensorValue.param == -1 ) then
+    sensorType.id = nil
+    sensorType.param = nil
+
+  -- sensor configured 
+  else
+    sensorType.id = sensorValue.id
+    sensorType.param = sensorValue.param
+  end
 
    -- save in model json
    system.pSave( sensorType.desc, sensorValue.id )
    system.pSave( sensorType.desc .. "Param", sensorValue.param)
 end
-
  
 --------------------------------------------------------------------------------------------
 function gpsSensor:getCurPosition ()
