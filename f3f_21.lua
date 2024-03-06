@@ -473,7 +473,7 @@ function f3fRun:updateSpeedAndOptimizationData ( speed, heading )
 
   if ( absHeading ) then
     -- heading related to slope edge
-    self.curHeading = slope.bearing - heading
+    self.curHeading = slope.bearing - absHeading
     if (self.curHeading < 0) then 
       self.curHeading = self.curHeading + 360
     end
@@ -510,7 +510,7 @@ function f3fRun:updateSpeedAndOptimizationData ( speed, heading )
 
       -- smoothen
       if ( self.prevCos_1 and self.prevCos_2) then
-        self.absCosHeading = (2*cosHead + 2*self.prevCos_1 + self.prevCos_2) / 5
+        self.absCosHeading = (4*cosHead + 2*self.prevCos_1 + self.prevCos_2) / 7
       end
       self.prevCos_2 = self.prevCos_1
       self.prevCos_1 = cosHead
@@ -567,6 +567,33 @@ function f3fRun:checkFlyIn ( trackData )
   end
 
   return false  
+end
+
+--------------------------------------------------------------------------------------------
+-- check, if second turn in a f3b-run was done without reaching the turn distance
+-- this is allowed, because the pilot standing at the a-base can fly this turn very precise
+-- by eye.
+-- the turn is recognized if the heading differs 100° from the expected flight direction to course
+-- (left: 180° / right: 0°)
+
+function f3fRun:checkF3bSecondTurnByHeading ()
+
+  if ( (slope.mode == 2) and (basicCfg.f3bMode == 1) and     -- are we in f3b speed mode
+       self:isStatus ( self.status.F3F_RUN ) and             -- are we in a competition run
+       (self.curDir == self.nextTurnDir ) and                -- going to hit the line
+       (self.rounds == 1) ) then                             -- second turn expected
+
+    if (( self.nextTurnDir == globalVar.direction.LEFT ) and
+       ( math.abs ( self.curHeading - 360 ) < 80 )) or       -- heading > 280° or < 80° while flying to left
+       (( self.nextTurnDir == globalVar.direction.RIGHT ) and
+       ( math.abs ( self.curHeading - 180 ) < 80 )) then     -- heading > 100 and < 260 while flying to right
+   
+      -- trigger turn
+      system.playBeep  (1, 700, 200)        -- double beep
+      self:setNextTurnDir ()
+      self.rounds = self.rounds+1
+    end
+  end
 end
 
 -- ===============================================================================================
@@ -1416,6 +1443,11 @@ local function loop()
   local curHeading = gpsSensor:getCurHeading ()
   f3fRun:updateSpeedAndOptimizationData ( curSpeed, curHeading )
   
+  -----------------------------------------------------------------------------
+  -- check for second turn in a f3b speed run - is recognized by special rules
+
+  f3fRun:checkF3bSecondTurnByHeading ()
+
   -----------------------------------------------------------------------------
   -- was a Base passed in f3f-Run (using the optimization offsets INSIDE the course)
   -- fly-out
