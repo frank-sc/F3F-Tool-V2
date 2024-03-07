@@ -306,7 +306,7 @@ function f3fRun:startRun ( timeout )
   transmitter:playAudioFile ( globalVar.resource.audioCourse, AUDIO_QUEUE )
   
   -- start timer for speed measurement after 1,5 sec.
-  if ( self.curSpeed and self:isStatus (self.status.F3F_RUN) ) then
+  if ( basicCfg.speedAnnouncement and self.curSpeed and self:isStatus (self.status.F3F_RUN) ) then
      self.timerStartSpeed = system.getTimeCounter()
   end
 end
@@ -744,21 +744,11 @@ basicCfg = {
 -- currently not configured, but can be put on potis for adjustment
   speedFaktorF3F = 65,           -- faktor for speed effect on offset during f3f run
   speedFaktorLaunchPhase = 65,   -- faktor for speed effect on offset during launch phase
-  statOffsetLaunchPhase = 8      -- static offset for launch phase 
+  statOffsetLaunchPhase = 8,     -- static offset for launch phase 
+
+-- further settings
+  speedAnnouncement 
 }
-
---------------------------------------------------------------------------------------------
--- determine index of a sensor in the sensor list
-
-function basicCfg:findIndexForSensor (sensorId, paramId)
-  local curIndex=-1
-  for index, sensor in ipairs(self.sensorList) do
-      if(sensor.id==sensorId and sensor.param==paramId) then 
-        curIndex=index
-      end
-  end
-  return curIndex
-end
 
 --------------------------------------------------------------------------------------------
 function basicCfg:init ()
@@ -769,6 +759,7 @@ function basicCfg:init ()
   self.f3bDistance = system.pLoad("f3bDistance", 150)
   self.ctrlCenterShift = system.pLoad("ctrlCenterShift")
   self.f3bMode = system.pLoad("f3bMode", 1)
+  self.speedAnnouncement = (system.pLoad("speedAnnouncement", 1) == 1 )
 end
 
 --------------------------------------------------------------------------------------------
@@ -1516,7 +1507,9 @@ local function loop()
        transmitter:playAudioFile ( globalVar.resource.audioLateEntry, AUDIO_QUEUE )
        
        -- Timer for speed measurement
-       f3fRun.timerStartSpeed = system.getTimeCounter()
+       if ( basicCfg.speedAnnouncement ) then
+          f3fRun.timerStartSpeed = system.getTimeCounter()
+       end
 	   end
   end
 

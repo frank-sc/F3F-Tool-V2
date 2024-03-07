@@ -41,7 +41,8 @@ local basicCfgForm = {
    compSensorLat = nil,
    compSensorLon = nil,
    compSensorSpeed = nil,
-   compSensorHeading = nil
+   compSensorHeading = nil,
+   compSpeedAnnounce = nil
 }
 
 --------------------------------------------------------------------------------------------
@@ -77,6 +78,13 @@ function basicCfgForm:findIndexForSensor (sensorId, paramId)
       end
    end
    return curIndex
+end
+
+--------------------------------------------------------------------------------------------
+function basicCfgForm:toggleMode ( mode, component)
+  local newMode = not mode
+  form.setValue( component, newMode )
+  return newMode
 end
 
 --------------------------------------------------------------------------------------------
@@ -172,6 +180,14 @@ function basicCfgForm:initForm(formID)
   curIndex = self:findIndexForSensor (self.gpsSensor.heading.id, self.gpsSensor.heading.param)
   self.compSensorHeading = form.addSelectbox (list, curIndex,true, nil, {width=200}) 
 
+  -- settings
+  form.addLabel({label=" --------------------------- Settings ------------------------------", font=FONT_MINI})
+
+  form.addRow(2)
+  form.addLabel({label="Speed Announcement", width=275})
+  self.compSpeedAnnounce = form.addCheckbox(self.cfgData.speedAnnouncement,
+       function (value) self.cfgData.speedAnnouncement = self:toggleMode ( self.cfgData.speedAnnouncement, self.compSpeedAnnounce ) end )  
+
   print("GC Count after config init : " .. collectgarbage("count") .. " kB");	
 end  
 
@@ -218,6 +234,14 @@ function basicCfgForm:closeForm ()
   value = form.getValue ( self.compSensorHeading )
   if (value and value>0) then 
     self.gpsSensor:setSensorValue ( self.gpsSensor.heading, self.sensorList[value])
+  end 
+
+  -- save boolean config value (psave cannot handle boolean directly)
+  local id = "speedAnnouncement"
+  if ( self.cfgData.speedAnnouncement ) then
+     system.pSave( id, 1) 
+  else
+     system.pSave( id, 0)
   end 
 end
 
