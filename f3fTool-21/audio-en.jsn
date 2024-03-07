@@ -2,11 +2,13 @@
     "audioStart":"en/F_Launch.wav",
     "audioSpeed":"/Voice/en/Speed.wav",
     "audioCourse":"/Voice/en/Course.wav",
-    "audioTime":"/Voice/en/Time.wav",
+    "audioTime":"/Apps/$dataDir/audio/en/Time.wav",
     "audioSeconds":"/Voice/en/Seconds.wav",
 	"audioALeft":"/Apps/$dataDir/audio/en/a-left.wav",
 	"audioARight":"/Apps/$dataDir/audio/en/a-right.wav",
 	"audioCenter":"/Apps/$dataDir/audio/en/center.wav",	
+	"audioStartPoint":"/Apps/$dataDir/audio/en/startingPoint.wav",
 	"audioF3bDistance":"F_Distance.wav",
-	"audioF3bSpeed":"F_Speed.wav"
+	"audioF3bSpeed":"F_Speed.wav",
+    "audioLateEntry":"/Apps/$dataDir/audio/en/late-entry.wav"
 }

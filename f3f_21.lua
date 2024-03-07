@@ -989,11 +989,13 @@ function slope:defineNewCenter ()
    -- F3B-mode: move center from left turn half distance to right turn
    if ( slope.mode == 2 ) then
       newHome = gps.getDestination ( newHome, basicCfg.f3bDistance / 2, self.bearing  )
+      transmitter:playAudioFile (globalVar.resource.audioStartPoint, AUDIO_QUEUE)	  
+   else
+      transmitter:playAudioFile (globalVar.resource.audioCenter, AUDIO_QUEUE)	  
    end
    
    self.gpsHome = newHome
    self:persist ( nil )
-   transmitter:playAudioFile (globalVar.resource.audioCenter, AUDIO_QUEUE)	  
 end
 
 --------------------------------------------------------------------------------------------
@@ -1511,6 +1513,8 @@ local function loop()
        -- if already a timeout occcurred, the time is running, just update status
      elseif ( f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
        f3fRun.curStatus = f3fRun.status.F3F_RUN
+       transmitter:playAudioFile ( globalVar.resource.audioLateEntry, AUDIO_QUEUE )
+       
        -- Timer for speed measurement
        f3fRun.timerStartSpeed = system.getTimeCounter()
 	   end

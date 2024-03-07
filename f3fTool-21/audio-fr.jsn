@@ -7,6 +7,8 @@
 	"audioALeft":"/Apps/$dataDir/audio/fr/a-gauche.wav",
 	"audioARight":"/Apps/$dataDir/audio/fr/a-droite.wav",
 	"audioCenter":"/Apps/$dataDir/audio/fr/centre.wav",	
+	"audioStartPoint":"/Apps/$dataDir/audio/fr/pointDepart.wav",
 	"audioF3bDistance":"F_Distance.wav",
-	"audioF3bSpeed":"F_Vitesse.wav"
+	"audioF3bSpeed":"F_Vitesse.wav",
+    "audioLateEntry":"/Apps/$dataDir/audio/fr/entree_tardive.wav"
 }
