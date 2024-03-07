@@ -166,13 +166,15 @@ function slopeMgrForm:bearingChanged ( value )
 
     if ( self.mode == 1 ) then
       courseType = "Slope"
-	  dir = self:getWindDir (self.valueBearingDirect )
+	    dir = self:getWindDir (self.valueBearingDirect )
     elseif ( self.mode == 2 ) then 
-	  courseType = "F3B-course"
-	  dir = self.valueBearingDirect
-	end
+	    courseType = "F3B-course"
+	    dir = self.valueBearingDirect
+	  end
 	
-	self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
+	  self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
+
+    form.setButton(5, "Ok", ENABLED)
   end  	
 end
 
@@ -251,8 +253,12 @@ function slopeMgrForm:initSlopeForm (formID)
     elseif ( self.mode == 2 ) then 
 	  courseType = "F3B-course"
       dir = self.slope.bearing
-	end
-	self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
+	  end
+	  self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
+
+    if ( not self.gpsSens:isValidPosition (self.slope.gpsHome) ) then
+      self.action = self.action .. " - no SP"
+    end  
   end  
   
   -- show a cancel button, until data is complete
@@ -292,9 +298,9 @@ function slopeMgrForm:checkDataComplete()
   local complete = false
   
   -- .. case of direct bearing input   
-  if ( self.gpsNewHome and self.valueBearingDirect ) then
+  if ( self.valueBearingDirect ) then      -- allow without Home Position
     self.bearing = self.valueBearingDirect
-	complete = true
+	  complete = true
 
    -- .. case of slope / A-Line - scan
   elseif ( self.gpsNewHome and self.gpsBearLeft and self.gpsBearRight ) then
@@ -358,31 +364,46 @@ function slopeMgrForm:slopeScanKeyPressed(key)
    if(key==KEY_5) then
    
      -- data complete ?
-     if ( self.gpsNewHome and self.bearing ) then
-      
-      -- F3B: calc home position, half distance away from scanned start
-      if (self.mode == 2) then
-        self.gpsNewHome = gps.getDestination ( self.gpsNewHome, self.f3bDist / 2, self.bearing )
-      end
+     if ( self.valueBearingDirect ) then
+       self.bearing = self.valueBearingDirect
+     end
 
-      -- set home, bearing and mode to slope object
-       self.slope.gpsHome = self.gpsNewHome
-       self.slope.bearing = self.bearing
-       self.slope.mode = self.mode
+     if ( self.bearing ) then
 
-       -- F3B: A-Base always left, left Base is defined as start point
+       -- home not set - save anyway ?  
+       if ( not self.gpsNewHome ) then   
+         local answer = form.question ( "Save Course bearing ?", "No Starting point set", "Must be defined later", 0, false, 500 )
+
+         -- 'YES' pressed
+         if ( answer == 1 ) then
+           self.gpsNewHome = gps.newPoint ( 0, 0 )   -- somewhere in the golf on guinea - we use this as invalid position
+
+         else 
+           -- play cancel beep and return
+           system.playBeep (2, 1000, 200)
+           return
+         end   
+       end
+
+       -- F3B: calc home position, half distance away from scanned start (if home defined)
+       --      and set A-Base always to left
        if (self.mode == 2) then
+         if ( self.gpsSens:isValidPosition (self.gpsNewHome) ) then   
+           self.gpsNewHome = gps.getDestination ( self.gpsNewHome, self.f3bDist / 2, self.bearing )
+         end
+
          self.slope.aBase = self.globalVar.direction.LEFT
        end
 
-       -- new scan has no name yet
-       self.slope.name = nil
-
-       -- save it
+       -- set values to slope object and save
+       self.slope.gpsHome = self.gpsNewHome
+       self.slope.bearing = self.bearing
+       self.slope.mode = self.mode
+       self.slope.name = nil           -- new course scan has no name yet
        self.slope:persist ()
+
        -- ok - beep
        system.playBeep (0, 700, 300)  
-	
      else
        -- cancel - beep
        system.playBeep (2, 1000, 200)

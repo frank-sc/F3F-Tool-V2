@@ -101,12 +101,13 @@ local globalVar = {
 }
 
 local errorTable = {
-  {"Sensors", "not", "configured"},                -- 1
-  {"Sensors", "not", "active"},                    -- 2
-  {"Speedsensor", "not", "active"},                -- 3
-  {"Slope", "not", "configured"},                  -- 4 
-  {"waiting", "for", "GPS-ready"},                 -- 5
-  {"F3F-Tool V. " .. appVersion , "", "not for Gen1 TX"}  -- 6
+  {"Sensors", "not", "configured"},                        -- 1
+  {"Sensors", "not", "active"},                            -- 2
+  {"Speedsensor", "not", "active"},                        -- 3
+  {"Slope", "not", "configured"},                          -- 4 
+  {"waiting", "for", "GPS-ready"},                         -- 5
+  {"F3F-Tool V. " .. appVersion , "", "not for Gen1 TX"},  -- 6
+  {"No", "Startpoint", "defined"}                          -- 7
 }
 
 -- Object pointer
@@ -715,6 +716,14 @@ function gpsSensor:getCurHeading ()
   end  
 end
 
+--------------------------------------------------------------------------------------------
+function gpsSensor:isValidPosition ( pos )
+  if ( not pos ) then return false end
+
+  local lat, lon = gps.getValue ( pos )
+  return ( not (lat == 0 and lon == 0 ) )
+end
+
 -- ===============================================================================================
 -- ===============================================================================================
 -- ========== Object: basicCfg                                                          ==========
@@ -1182,7 +1191,7 @@ function display:showDistanceToStart ()
 	
   -- F3B: recalc distance to startpoint at A-Line	
   elseif ( slope.mode == 2 and slope:isDefined () and f3fRun.curPosition ) then
-	f3bStart = gps.getDestination ( slope.gpsHome, (-1) * basicCfg.f3bDistance / 2, slope.bearing )
+	local f3bStart = gps.getDestination ( slope.gpsHome, (-1) * basicCfg.f3bDistance / 2, slope.bearing )
 	distToStart = gps.getDistance (f3bStart, f3fRun.curPosition)
   end
 
@@ -1427,9 +1436,14 @@ local function loop()
   if ( globalVar.errorStatus > 0) then f3fRun:init () return end
 	
   -----------------------------------------------------------------------------  
-  -- check, if slope is defined
+  -- check, if slope is defined and valid
   if ( not slope:isDefined () ) then
     globalVar.errorStatus = 4
+    return
+  end	
+
+  if ( not gpsSensor:isValidPosition (slope.gpsHome) ) then
+    globalVar.errorStatus = 7
     return
   end	
 
