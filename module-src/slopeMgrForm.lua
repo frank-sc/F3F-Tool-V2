@@ -146,11 +146,20 @@ function slopeMgrForm:bearingChanged ( value )
 
   if ( directInput ) then
     -- direct bearing input is used
-    self.displayName = ""  	
+    self.displayName = ""  
+
+    -- reset bearing and scan points,
+    -- maybe they were used before entering direct input
+    self.bearing = nil
+    self.gpsBearLeft = nil
+    self.gpsBearRight = nil
+    form.setValue (self.checkBoxBearingL, false )
+    form.setValue (self.checkBoxBearingR, false )
+	
   else
     -- scan is used
-	self.valueBearingDirect = nil
-	self.action = ""
+	  self.valueBearingDirect = nil
+	  self.action = ""
   end
   
   -- make bearing scan line invisible in case of direct input 
@@ -175,6 +184,8 @@ function slopeMgrForm:bearingChanged ( value )
 	  self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
 
     form.setButton(5, "Ok", ENABLED)
+  else
+    form.setButton(5, "Cancel", ENABLED)
   end  	
 end
 
@@ -335,17 +346,23 @@ function slopeMgrForm:slopeScanKeyPressed(key)
    -- start button
    if(key==KEY_1) then
      self.gpsNewHome = self:scanGpsPoint ( self.checkBoxSlope, "Starting position set" )
-     self:checkDataComplete ()
+     if ( self.globalVar.errorStatus == 0 ) then
+       self:checkDataComplete ()
+     end
 
    -- button bearing left 
    elseif(key==KEY_2 and self.leftRightScanEnabled) then
      self.gpsBearLeft = self:scanGpsPoint ( self.checkBoxBearingL, "Left bearing point set" )
-     self:checkDataComplete ()
+     if ( self.globalVar.errorStatus == 0 ) then
+      self:checkDataComplete ()
+    end
 
    -- button bearing right
    elseif(key==KEY_3 and self.leftRightScanEnabled) then
      self.gpsBearRight = self:scanGpsPoint ( self.checkBoxBearingR, "Right bearing point set" )
-     self:checkDataComplete ()
+     if ( self.globalVar.errorStatus == 0 ) then
+      self:checkDataComplete ()
+    end
 
    -- toggle F3F/F3B-mode
    elseif(key==KEY_4 and self.courseTypeToggleEnabled) then
