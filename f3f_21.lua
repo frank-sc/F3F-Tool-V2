@@ -742,9 +742,9 @@ basicCfg = {
 
 -- values for adjustment of latency
 -- currently not configured, but can be put on potis for adjustment
-  speedFaktorF3F = 65,           -- faktor for speed effect on offset during f3f run
-  speedFaktorLaunchPhase = 65,   -- faktor for speed effect on offset during launch phase
-  statOffsetLaunchPhase = 8,     -- static offset for launch phase 
+  speedFaktorF3F = 58,           -- faktor for speed effect on offset during f3f run
+  speedFaktorLaunchPhase = 62,   -- faktor for speed effect on offset during launch phase
+  statOffsetLaunchPhase = 6,     -- static offset for launch phase 
 
 -- further settings
   speedAnnouncement 
