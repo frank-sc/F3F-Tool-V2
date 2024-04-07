@@ -812,10 +812,16 @@ end
 transmitter = {
 
 --  state = { IDLE=0, ACTIV_1=1, RELEASED_1=2, ACTIV_2=3 },   -- needs too much memory :( 
-                                                              -- use values directly
+                                                              -- use values directly   
+  -- variables for multi-button observation
   switchState = 0,
-  curCenterShiftState = 0,
-  timerStartSwitch                 -- timer for detectoin of long- / double- / long click
+  timerStartSwitch,                -- timer for detection of long- / double- / long click
+
+  -- variables for center shift observation
+  centerShiftState = 0,             -- <=0: released / 1: first shift / 2: 1 ore more shifts trigged by timer 
+  timerCenterShift,                 -- timer for holding center shift control
+  shiftDir = globalVar.direction.UNDEF,
+  shiftCount = 0                    -- >0: shift right / <0: shift left
 }
 
 --------------------------------------------------------------------------------------------
@@ -866,23 +872,73 @@ function transmitter:observeSwitch ()
 end
 
 --------------------------------------------------------------------------------------------
+function transmitter:incrShiftCount ( dir )
+  if ( dir == globalVar.direction.RIGHT ) then
+    self.shiftCount = self.shiftCount + 1
+  elseif ( dir == globalVar.direction.LEFT ) then
+    self.shiftCount = self.shiftCount - 1
+  end
+end
+
+--------------------------------------------------------------------------------------------
 -- observe control for center adjustment
 
 function transmitter:observeCenterShift ()
 
+  -- get control state
   local sVal
   sVal = system.getInputsVal( basicCfg.ctrlCenterShift)
+  if ( not sVal ) then return globalVar.direction.UNDEF end
 
-  if ( sVal and sVal > 0.3 and self.curCenterShiftState == 0 ) then
-    self.curCenterShiftState = 1
-    return globalVar.direction.RIGHT -- adjust to right
+  -- state <0: right or left pressed from idle state ?
+  if ( self.centerShiftState <= 0 ) then
+    if ( sVal > 0.3 ) then
+      self.shiftDir = globalVar.direction.RIGHT  -- adjust to right
+      self.centerShiftState = 1
+    elseif ( sVal < -0.3 ) then
+      self.shiftDir = globalVar.direction.LEFT  -- adjust to left
+      self.centerShiftState = 1
+    end
 	
-  elseif ( sVal and sVal < -0.3 and self.curCenterShiftState == 0 ) then
-    self.curCenterShiftState = -1
-    return globalVar.direction.LEFT  -- adjust to left
+    if ( self.centerShiftState == 1 ) then
+      self.timerCenterShift = system.getTimeCounter()
+      self:incrShiftCount ( self.shiftDir )        
+      return self.shiftDir
+    end  
+	
+  -- control released: start timer to wait some ms, migt be pressed again (State -1)
+  elseif ( sVal > -0.3 and sVal < 0.3 ) then
+    self.centerShiftState = -1
+    self.timerCenterShift = system.getTimeCounter()
+    self.shiftDir = globalVar.direction.UNDEF
+  end
+    
+  -- control was released and timer expired    
+  if ( self.centerShiftState == -1 and (system.getTimeCounter() - self.timerCenterShift) > 400 ) then         
+        
+    -- announce number of shifted meters
+    if ( self.shiftCount > 0 ) then
+      transmitter:playAudioFile (globalVar.resource.audioRight, AUDIO_QUEUE)	
+      system.playNumber ( self.shiftCount, 0, "m")
+    elseif ( self.shiftCount < 0 ) then
+      transmitter:playAudioFile (globalVar.resource.audioLeft, AUDIO_QUEUE)	
+      system.playNumber ( self.shiftCount*-1, 0, "m")
+    end
+    self.centerShiftState = 0
+    self.shiftCount = 0	  
+  end
 
-  elseif ( sVal and sVal > -0.3 and sVal < 0.3 and self.curCenterShiftState ~= 0 ) then
-    self.curCenterShiftState = 0
+  -- control is held (left or right)
+  if ( self.centerShiftState == 1 and  (system.getTimeCounter() - self.timerCenterShift) > 400 ) then
+      self.centerShiftState = 2
+      self.timerCenterShift = system.getTimeCounter()
+      self:incrShiftCount ( self.shiftDir )        
+      return self.shiftDir
+  
+  elseif (self.centerShiftState == 2 and  (system.getTimeCounter() - self.timerCenterShift) > 150 ) then 
+      self.timerCenterShift = system.getTimeCounter()
+      self:incrShiftCount ( self.shiftDir )        
+      return self.shiftDir
   end
 
   return globalVar.direction.UNDEF
@@ -1006,9 +1062,9 @@ function slope:moveCenter ( dir )
    if ( dir == globalVar.direction.LEFT ) then 
       -- adjustment to left: use reverse bearing 
       bear = (bear + 180) % 360
-      system.playBeep (1, 600, 100)
+      system.playBeep (0, 600, 100)
    else
-      system.playBeep (1, 1000, 100)  
+      system.playBeep (0, 1000, 100)  
    end
   
    -- move it

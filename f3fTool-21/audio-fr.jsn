@@ -10,5 +10,7 @@
 	"audioStartPoint":"/Apps/$dataDir/audio/fr/pointDepart.wav",
 	"audioF3bDistance":"F_Distance.wav",
 	"audioF3bSpeed":"F_Vitesse.wav",
-    "audioLateEntry":"/Apps/$dataDir/audio/fr/entree_tardive.wav"
+    "audioLateEntry":"/Apps/$dataDir/audio/fr/entree_tardive.wav",
+	"audioLeft":"/Apps/$dataDir/audio/fr/gauche.wav",
+	"audioRight":"/Apps/$dataDir/audio/fr/droite.wav"
 }
