@@ -77,7 +77,8 @@ function slopeMgrForm:enableLeftRightScan ( enable )
     form.setButton(2,"Left", ENABLED)
     form.setButton(3,"Right", ENABLED)
   else
-    form.setButton(2,"Left", DISABLED)
+--    form.setButton(2,"Left", DISABLED)
+    form.setButton(2,"Cancel", ENABLED)
     form.setButton(3,"Right", DISABLED)
   end
   
@@ -250,6 +251,8 @@ function slopeMgrForm:initSlopeForm (formID)
   form.setButton(2, "Left", ENABLED)
   form.setButton(3, "Right", ENABLED)
   form.setButton(4, toggleButtonText, ENABLED)
+  -- show a cancel button, until data is complete
+  form.setButton(5, "Cancel", ENABLED)
   
   -- course already defined - and matches current selected course type?  
   if ( self.slope:isDefined () and ( self.slope.mode == self.mode )) then
@@ -267,14 +270,13 @@ function slopeMgrForm:initSlopeForm (formID)
 	  end
 	  self.action = string.format("%s: %s (%.0f%s)", courseType, self:getDirDesc(dir), dir, utf8.char (176) )
 
+    -- course definition not complete, start point missing 
     if ( not self.gpsSens:isValidPosition (self.slope.gpsHome) ) then
+	    form.setValue( self.intBoxBearing, dir)  -- will set button 5 to 'OK' by 'bearing changed'
       self.action = self.action .. " - no SP"
     end  
   end  
   
-  -- show a cancel button, until data is complete
-  form.setButton(5, "Cancel", ENABLED)
-
   -- local freeMem = collectgarbage("count");
   -- print("GC Count after slopemgr init : " .. freeMem .. " kB");
 end
@@ -308,6 +310,9 @@ function slopeMgrForm:checkDataComplete()
 
   local complete = false
   
+  -- skip in case of sensor error (status 1, 2, 5)
+  if ( self.globalVar.errorStatus == 1 or self.globalVar.errorStatus == 2 or self.globalVar.errorStatus == 5  ) then return end
+
   -- .. case of direct bearing input   
   if ( self.valueBearingDirect ) then      -- allow without Home Position
     self.bearing = self.valueBearingDirect
@@ -346,23 +351,25 @@ function slopeMgrForm:slopeScanKeyPressed(key)
    -- start button
    if(key==KEY_1) then
      self.gpsNewHome = self:scanGpsPoint ( self.checkBoxSlope, "Starting position set" )
-     if ( self.globalVar.errorStatus == 0 ) then
-       self:checkDataComplete ()
-     end
+     self:checkDataComplete ()
 
-   -- button bearing left 
-   elseif(key==KEY_2 and self.leftRightScanEnabled) then
-     self.gpsBearLeft = self:scanGpsPoint ( self.checkBoxBearingL, "Left bearing point set" )
-     if ( self.globalVar.errorStatus == 0 ) then
-      self:checkDataComplete ()
-    end
+   elseif (key==KEY_2) then
+     -- button bearing left 
+     if (self.leftRightScanEnabled) then
+       self.gpsBearLeft = self:scanGpsPoint ( self.checkBoxBearingL, "Left bearing point set" )
+       self:checkDataComplete ()
+	   
+	 else  
+	   -- cancel of direct input
+	   form.setValue( self.intBoxBearing, -1)
+	   self.bearing = nil
+	   self.slope.bearing = nil
+     end
 
    -- button bearing right
    elseif(key==KEY_3 and self.leftRightScanEnabled) then
      self.gpsBearRight = self:scanGpsPoint ( self.checkBoxBearingR, "Right bearing point set" )
-     if ( self.globalVar.errorStatus == 0 ) then
-      self:checkDataComplete ()
-    end
+     self:checkDataComplete ()
 
    -- toggle F3F/F3B-mode
    elseif(key==KEY_4 and self.courseTypeToggleEnabled) then
