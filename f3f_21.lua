@@ -1422,7 +1422,17 @@ local function init()
       function () slopeManager:printSlopeForm () end,
       function () slopeManager:closeSlopeForm () end )
 
+  -- register log variables (via external module if available)      
+  local logModuleName = dataDirRel .. "/module/logModule"
+  local loadSuccess, logModule = pcall ( require, logModuleName )
+--  local logModule = require ( logModuleName )
 
+  -- provide necessary information and register
+  if ( loadSuccess ) then
+    logModule.globalVar = globalVar
+    logModule.f3fRun = f3fRun
+    logModule:registerLogVariables ()
+  end
   -- DEBUG
   -- print("GC Count : " .. collectgarbage("count") .. " kB");
 
