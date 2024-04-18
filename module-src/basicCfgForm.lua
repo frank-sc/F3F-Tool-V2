@@ -145,7 +145,7 @@ function basicCfgForm:initForm(formID)
 
   -- adjustment of center
   form.addRow (2)
-  form.addLabel({label="Center adjust ctrl. (prop)", width = 250})
+  form.addLabel({label="Course adjust ctrl. (prop)", width = 250})
   self.compCtrlCenterShift = form.addInputbox(self.cfgData.ctrlCenterShift, true, nil,{width=60})
 
   -- definition of distance (F3B / F3F)
