@@ -525,6 +525,31 @@ function f3fRun:updateSpeedAndOptimizationData ( speed, heading )
 end
 
 --------------------------------------------------------------------------------------------
+-- returns true if position is in the half the flight direction is:
+--   - to right while we should hit the left line next (heading differs more than 100 deg. from 180°)
+--   - to left while we should hit the right line next (heading differs more than 100 deg. from 360°)
+--   - AND we are already in the half of the course where the next line hit should occur
+
+function f3fRun:flyingAwayFromLine ()
+
+  -- not in the right half facing the line?
+  if ( self.curDir ~= self.nextTurnDir ) then return false end
+
+  -- flying to right while left line is next
+  if (( self.nextTurnDir == globalVar.direction.LEFT ) and
+     ( math.abs ( self.curHeading - 360 ) < 80 )) then        -- heading > 280° or < 80°
+    return true
+	   
+  -- flying to left while right line is next
+  elseif (( self.nextTurnDir == globalVar.direction.RIGHT ) and
+         ( math.abs ( self.curHeading - 180 ) < 80 )) then    -- heading > 100 and < 260
+    return true
+  end	
+	   
+  return false
+end
+
+--------------------------------------------------------------------------------------------
 -- check, if a fly out occurred, consider the calculated offsets and the turn line calculation
 -- based on the cosinus
 
@@ -533,11 +558,17 @@ function f3fRun:checkFlyOut ( trackData )
   if ( trackData.insideFlag ) then
     local dist = self.curDist * math.abs ( math.cos (math.rad ( self.curBearing )))
 
-    local offset = trackData.offset
-    if ( self.absCosHeading ) then
-      offset = offset * self.absCosHeading 
-    end  
- 
+    local offset = 0
+	
+	-- use optimization offset only if we are flying towards the line. Otherwise the
+    -- increasing cosinus could lead to a wrong beep on the 'way back'
+    if ( not self:flyingAwayFromLine () ) then
+      offset = trackData.offset
+      if ( self.absCosHeading ) then
+        offset = offset * self.absCosHeading 
+      end
+    end
+	
     if ( dist + offset > self.halfDistance) then
       trackData.insideFlag = false  
       return true
@@ -575,21 +606,16 @@ end
 -- this is allowed, because the pilot standing at the a-base can fly this turn very precise
 -- by eye.
 -- the turn is recognized if the heading differs 100° from the expected flight direction to course
--- (left: 180° / right: 0°)
+-- (to left: 180° / to right: 0°)
 
 function f3fRun:checkF3bSecondTurnByHeading ()
 
   if ( (slope.mode == 2) and (basicCfg.f3bMode == 1) and     -- are we in f3b speed mode
        self:isStatus ( self.status.F3F_RUN ) and             -- are we in a competition run
-       (self.curDir == self.nextTurnDir ) and                -- going to hit the line
        (self.rounds == 1) ) then                             -- second turn expected
 
-    if (( self.nextTurnDir == globalVar.direction.LEFT ) and
-       ( math.abs ( self.curHeading - 360 ) < 80 )) or       -- heading > 280° or < 80° while flying to left
-       (( self.nextTurnDir == globalVar.direction.RIGHT ) and
-       ( math.abs ( self.curHeading - 180 ) < 80 )) then     -- heading > 100 and < 260 while flying to right
-   
-      -- trigger turn
+    -- trigger turn if flight dierection is away from next line to hit
+    if ( self:flyingAwayFromLine () ) then   
       system.playBeep  (1, 700, 200)        -- double beep
       self:setNextTurnDir ()
       self.rounds = self.rounds+1
@@ -1396,6 +1422,7 @@ local function init()
    for _,v in ipairs(monoDev) do
       if dev == v then    
         globalVar.errorStatus = 6
+	    print("GC Count (device error): " .. collectgarbage("count") .. " kB");
         return
       end
    end
@@ -1433,6 +1460,7 @@ local function init()
     logModule.f3fRun = f3fRun
     logModule:registerLogVariables ()
   end
+
   -- DEBUG
   -- print("GC Count : " .. collectgarbage("count") .. " kB");
 
@@ -1545,7 +1573,6 @@ local function loop()
   -- fly-out
   if ( f3fRun:checkFlyOut ( f3fRun.launchPhaseData ) and
      ( f3fRun.curDir == slope.aBase ) ) then                 -- only valid on A-BAse
-  
      -- event only valid for launch Phase and timeout 
      if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) or 
           f3fRun:isStatus (f3fRun.status.TIMEOUT)) then
@@ -1556,7 +1583,6 @@ local function loop()
   -- fly-in
   if ( f3fRun:checkFlyIn ( f3fRun.launchPhaseData ) and
      ( f3fRun.curDir == slope.aBase ) ) then                 -- only valid on A-BAse
-	   
      if ( f3fRun:isStatus (f3fRun.status.STARTPHASE) or 
           f3fRun:isStatus (f3fRun.status.TIMEOUT) ) then
        system.playBeep  (0, 700, 300)  -- fly-in beep
