@@ -305,6 +305,9 @@ function f3fRun:startRun ( timeout )
   self.f3fStartTime = system.getTimeCounter()
   transmitter:playAudioFile ( globalVar.resource.audioCourse, AUDIO_QUEUE )
   
+  -- skip apeed measurement in F3B-Distance mode
+  if ((slope.mode == 2) and (basicCfg.f3bMode == 2)) then return end
+  
   -- start timer for speed measurement after 1,5 sec.
   if ( basicCfg.speedAnnouncement and self.curSpeed and self:isStatus (self.status.F3F_RUN) ) then
      self.timerStartSpeed = system.getTimeCounter()
@@ -321,10 +324,11 @@ function f3fRun:distanceDone ()
      system.playBeep (0, 700, 300)  
    end
    
-   -- in F3B-Distance mode: always count legs
+   -- in F3B-Distance mode: always count legs and beep
    if ((slope.mode == 2) and (basicCfg.f3bMode == 2)) then
      self.rounds = self.rounds+1
      self:setNextTurnDir ()
+     system.playBeep (0, 700, 300)  
      return
    end
 
@@ -537,8 +541,8 @@ function f3fRun:flyingAwayFromLine ()
 
   -- flying to right while left line is next
   if (( self.nextTurnDir == globalVar.direction.LEFT ) and
-     ( math.abs ( self.curHeading - 360 ) < 80 )) then        -- heading > 280° or < 80°
-    return true
+     (( math.abs ( self.curHeading - 360 ) < 80 ) or (self.curHeading < 80) )) then 
+    return true                                               -- heading > 280° or < 80°
 	   
   -- flying to left while right line is next
   elseif (( self.nextTurnDir == globalVar.direction.RIGHT ) and
