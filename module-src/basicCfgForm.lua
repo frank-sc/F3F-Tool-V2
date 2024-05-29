@@ -42,7 +42,8 @@ local basicCfgForm = {
    compSensorLon = nil,
    compSensorSpeed = nil,
    compSensorHeading = nil,
-   compSpeedAnnounce = nil
+   compSpeedAnnounce = nil,
+   compLogResults = nil
 }
 
 --------------------------------------------------------------------------------------------
@@ -188,7 +189,12 @@ function basicCfgForm:initForm(formID)
   self.compSpeedAnnounce = form.addCheckbox(self.cfgData.speedAnnouncement,
        function (value) self.cfgData.speedAnnouncement = self:toggleMode ( self.cfgData.speedAnnouncement, self.compSpeedAnnounce ) end )  
 
-  print("GC Count after config init : " .. collectgarbage("count") .. " kB");	
+  form.addRow(2)
+  form.addLabel({label="Result Logging", width=275})
+  self.compLogResults = form.addCheckbox(self.cfgData.logResults,
+       function (value) self.cfgData.logResults = self:toggleMode ( self.cfgData.logResults, self.compLogResults ) end )  
+
+  -- print("GC Count after config init : " .. collectgarbage("count") .. " kB");	
 end  
 
 --------------------------------------------------------------------------------------------
@@ -236,13 +242,21 @@ function basicCfgForm:closeForm ()
     self.gpsSensor:setSensorValue ( self.gpsSensor.heading, self.sensorList[value])
   end 
 
-  -- save boolean config value (psave cannot handle boolean directly)
+  -- save boolean config values (psave cannot handle boolean directly)
   local id = "speedAnnouncement"
   if ( self.cfgData.speedAnnouncement ) then
      system.pSave( id, 1) 
   else
      system.pSave( id, 0)
   end 
+
+  local id = "logResults"
+  if ( self.cfgData.logResults ) then
+     system.pSave( id, 1) 
+  else
+     system.pSave( id, 0)
+  end 
+
 end
 
 --------------------------------------------------------------------------------------------

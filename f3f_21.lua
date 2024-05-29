@@ -149,19 +149,25 @@ local function setLanguage()
 end
 
 --------------------------------------------------------------------------------------------
-local function writeToFile (dir, file, data)
-  local fSpec = dir.."/"..file
-  local f = io.open ( fSpec, "w" )
+local function writeToFile (dir, file, data, append)
+  
+  if ( dir ~= "" ) then dir = dir.."/" end
+  local fSpec = dir..file
+    
+  local mode 
+  if (append) then mode = "a" else mode = "w" end
+  
+  local f = io.open ( fSpec, mode )
 	   
   if ( not f ) then		  
       io.mkdir (dir)
-      f = io.open ( fSpec, "w" )
+      f = io.open ( fSpec, mode )
     
       if ( not f) then
         handleError ("error writing file: " .. fSpec)
       end
   end
-	
+
   if ( f ) then
     io.write(f, data, "\n")
     io.close ( f )
@@ -368,6 +374,18 @@ function f3fRun:distanceDone ()
         system.playNumber (self.flightTime / 1000, 1)
         transmitter:playAudioFile ( globalVar.resource.audioSeconds, AUDIO_QUEUE )
 		   
+		-- log result
+        if ( basicCfg.logResults ) then
+          local mode
+		  if (slope.mode == 1) then mode = "F3F" else mode = "F3B" end
+          local dt = system.getDateTime()
+		  local modelName = system.getProperty ("Model")
+          local resultFile = string.format( "%d-%02d-%02d.txt", dt.year, dt.mon, dt.day )
+          local text = string.format( "%d:%02d  %s-Time:  %.2f   (%s)", dt.hour, dt.min, mode, self.flightTime / 1000, modelName)
+          writeToFile (dataDir.."/results", resultFile, text, true )   
+		end
+		   
+		-- status change   
         self.curStatus = self.status.ON_HOLD
       end
    end
@@ -777,7 +795,8 @@ basicCfg = {
   statOffsetLaunchPhase = 6,     -- static offset for launch phase 
 
 -- further settings
-  speedAnnouncement 
+  speedAnnouncement, 
+  logResults
 }
 
 --------------------------------------------------------------------------------------------
@@ -789,7 +808,8 @@ function basicCfg:init ()
   self.f3bDistance = system.pLoad("f3bDistance", 150)
   self.ctrlCenterShift = system.pLoad("ctrlCenterShift")
   self.f3bMode = system.pLoad("f3bMode", 1)
-  self.speedAnnouncement = (system.pLoad("speedAnnouncement", 1) == 1 )
+  self.speedAnnouncement = (system.pLoad("speedAnnouncement", 1) == 1 ) -- default: true
+  self.logResults = (system.pLoad("logResults", 0) == 1 )               -- default: false
 end
 
 --------------------------------------------------------------------------------------------
@@ -1035,7 +1055,7 @@ function slope:persist ()
   if ( self:isDefined () ) then
     --- save slope-data in JSON independently from model storage
     local jsonStr = json.encode ( self:jsonData () )
-    writeToFile (dataDir, "slopeData.jsn", jsonStr )   
+    writeToFile (dataDir, "slopeData.jsn", jsonStr, false )   
   end    
 end
 
