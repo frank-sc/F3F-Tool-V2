@@ -12,9 +12,30 @@ For installation of the current development version (HEAD) please refer to the [
 ## Status
 The tool in Version 2.0 is functionally identical with V1.4 (in Repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1), but memory optimization for Generation 1 transmitters was partly removed. Further development on this tool unfortunately can not be done for the old transmitters.
 
-## News in V 2.1
-- direct input of slope direction / course direction possible now, so no need to scan Left / Right / Bear if course is known
+## Changelog V 2.1
+General changes:
+- improved algorithm for turn line detection, will be more precise if flying further away from the slope or F3B course line.
+- some audio changes, for example 'late entry' is announced, adjustment of course is announced im meters
+- the second turn in F3B speed mode is alternatively detected by the change of flight direction
+- the course can be shifted more than one meter by holding the assigned control
+- result times of training flights can be stored in a file for later view
+
+Configuration:
+- the 'flight direction' value from gps-sensor should be configured additionally (optional but required). So if it was disabled in the sensor for usage of F3F-Tool V 1.4 it should be enabled again.
+- speed-announcement after course entry can be disabled
+- 'Center adjust ctrl.' renamed to 'Course adjust ctrl.'
+- logging of result times can be activated
+
+Course Setup:
+- direct input of slope direction / course direction is possible now, so no need to scan 'Left / Right' if the course is known
 - for F3B-course scan now the A-Line is used instead of flight direction
+
+Display:
+- 'distance to start' now also is shown in F3B mode
+- in F3F mode the current model position (inside or outside course / left or right) is shown
+- display was adapted to the new sceen resolution (480*480 px) of 'Jeti DC 24 II' (and probably further new Jeti transmitters), res. is switched automatically.
+
+For further details of the changes refer to the manual.
 
 ## Development notices
 The main program file 'f3f_\<version\> and the working directory 'f3fTool-\<version\> are always renamed for a new upcoming version. This is to make sure that everything fits together and to allow several versions to run independently on one transmitter.

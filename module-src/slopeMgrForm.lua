@@ -272,7 +272,7 @@ function slopeMgrForm:initSlopeForm (formID)
 
     -- course definition not complete, start point missing 
     if ( not self.gpsSens:isValidPosition (self.slope.gpsHome) ) then
-	    form.setValue( self.intBoxBearing, dir)  -- will set button 5 to 'OK' by 'bearing changed'
+      form.setValue( self.intBoxBearing, dir)  -- will set button 5 to 'OK' by 'bearing changed'
       self.action = self.action .. " - no SP"
     end  
   end  

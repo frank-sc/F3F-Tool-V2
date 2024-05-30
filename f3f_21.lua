@@ -20,7 +20,7 @@
 -- ###############################################################################################
 -- # General approach
 -- #
--- # For course setup 3 points (only 2 for f3b) on the course are scanned by gps.
+-- # For course setup 3 points on the course (or A-Line in case of F3B) are scanned by gps.
 -- # One point is defined as starting point, the others are used to determine the
 -- # course bearing to north.
 -- # 
@@ -34,8 +34,8 @@
 -- # turn line anywhere.
 -- #
 -- # In order to handle gps- and telemetry latency a speed-related compensation is done.
--- # Depending on the current speed a offset is calculated and added to the flight distance,
--- # so the turn signal will be triggered earlier.
+-- # Depending on the current speed and flight direction a offset is calculated and added
+-- # to the flight distance, so the turn signal will be triggered earlier.
 -- # The setting for the amount of compensation was determined empirically, so there is no 
 -- # theoretical approach for this value. Currently the compensation is simply linear to
 -- # the speed.
@@ -54,20 +54,14 @@
 -- # Further notices:
 -- #
 -- # Jeti-Gen1 Support
--- # Generation 1 Jeti transmitters (all with monochrome diaplay) are strongly limited
--- # in memory usage. To allow this program to run within this limit a lot of optimization
--- # was necessary, partly messing up program structure. Also splitting it into modules
--- # was caused by this purpose. The modules can by unloaded if not needed and so reduce
--- # memory usage significantly.
--- #
--- # ALSO THIS SOFTWARE MUST ONLY BE INSTALLED IN THE PACKED FORM '.lc' ON THESE TRANSMITTERS
--- # (AS IT ALWAYS SHOULD ON ALL TRANSMITTERS). NEVER USE THE '.lua'!
+-- # This program version is not suitable for Jeti Gen1-transmitters (with monochrome diaplay)
+-- # For F3F / F3B training with an old transmitter you can use Version 1.x of this software.
 -- #
 -- # ---------------------------------------------------------------------------------------------
 -- # F3B-Mode
 -- # In F3B-Mode things are almost handled the same, position and angles are calculated
 -- # related to the middle of the course. For convience the course-setup can be done
--- # from A-Base and the center point is calculated automatically.
+-- # along the A-Lane and the center point is calculated automatically.
 -- #
 -- # ---------------------------------------------------------------------------------------------
 -- # External course modification
