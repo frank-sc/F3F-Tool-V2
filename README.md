@@ -4,7 +4,7 @@ This lua-app for Jeti transmitters is made for gps-based training of RC glider s
 For generation 1 Jeti transmitters please use Version 1.x from repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1) 
 
 ## Program Installation
-For installation of a stable release please download the zip-file and the corresponding manual of the newest release from the [**releases-page**](https://github.com/frank-sc/F3F-Tool-V2/releases), download of the 'source code' packages is not necessary. Copy all files and directories into your 'apps' directory on the transmitter, as described in the manual. Then please follow the further steps in the [**F3F-Tool manual**](docs/F3F-Tool%20Manual.md).<br>
+For installation of a stable release please download the zip-file and the corresponding manual of the newest release from the [**releases-page**](https://github.com/frank-sc/F3F-Tool-V2/releases), download of the 'source code' packages is not necessary. Copy all files and directories into your 'apps' directory on the transmitter, as described in the manual. Then please follow the further steps in the [**F3F-Tool manual**](docs/F3F-Tool%20Manual.md) - now also available in german here [**F3F-Tool Anleitung**](docs/F3F-Tool%20Anleitung.md) .<br>
 **Important: Please use newest Jeti Firmware (currently 5.06 LUA). Older Firmware Versions may cause problems!**
 
 For installation of the current development version (HEAD) please refer to the [**wiki**](https://github.com/frank-sc/F3F-Tool-V2/wiki)
@@ -19,6 +19,7 @@ General changes:
 - the second turn in F3B speed mode is alternatively detected by the change of flight direction
 - the course can be shifted more than one meter by holding the assigned control
 - result times of training flights can be stored in a file for later view
+- german manual available
 
 Configuration:
 - the 'flight direction' value from gps-sensor should be configured additionally (optional but required). So if it was disabled in the sensor for usage of F3F-Tool V 1.4 it should be enabled again.
@@ -47,8 +48,4 @@ Information about choosing a GPS-sensor and the Installation in the glider can b
 If you like the tool you can support my work on the the project by making a donation, i appreciate :)<br><br>
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.PayPal.Me/f3frank)<br>
 
-### thanks to
-- all donaters, who appreciate my work and help me getting new hardware for testing
-- Axel Barnitzke for giving me an idea how to work kind of object-oriented in LUA
-- Dave McQueeney for sharing his great Sensor Emulator for Jeti Studio, which allowed me to do a lot of testing on the PC,
-and also for bringing up the idea of unloading and reloading parts of code to meet the memory limitations
+**Thanks to all donaters, who appreciate my work and help me getting new hardware for testing**
