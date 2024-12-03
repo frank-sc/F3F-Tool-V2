@@ -4,10 +4,10 @@ This lua-app for Jeti transmitters is made for gps-based training of RC glider s
 For generation 1 Jeti transmitters please use Version 1.x from repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1) 
 
 ## Program Installation
-For installation of a stable release please download the zip-file and the corresponding manual of the newest release from the [**releases-page**](https://github.com/frank-sc/F3F-Tool-V2/releases), download of the 'source code' packages is not necessary. Copy all files and directories into your 'apps' directory on the transmitter, as described in the manual. Then please follow the further steps in the [**F3F-Tool manual**](docs/F3F-Tool%20Manual.md) - now also available in german here [**F3F-Tool Anleitung**](docs/F3F-Tool%20Anleitung.md) .<br>
-**Important: Please use newest Jeti Firmware (currently 5.06 LUA). Older Firmware Versions may cause problems!**
+For installation of a stable release please download the zip-file and the corresponding manual of the newest release from the [**releases-page**](https://github.com/frank-sc/F3F-Tool-V2/releases), download of the 'source code' packages is not necessary. Copy all files and directories into your 'apps' directory on the transmitter, as described in the manual. Then please follow the further steps in the [**F3F-Tool manual**](docs/F3F-Tool%20Manual.md) - now also available in german here [**F3F-Tool Anleitung**](docs/F3F-Tool%20Anleitung.md) .<br><br>
+**Important: Please use newest Jeti Firmware (currently 5.08 LUA). Older Firmware Versions may cause problems! Especially on DS12 we had problems during Installation process on Firmware 5.06**
 
-For installation of the current development version (HEAD) please refer to the [**wiki**](https://github.com/frank-sc/F3F-Tool-V2/wiki)
+Only for developers: If you want to install the current development version (HEAD) please refer to the [**wiki**](https://github.com/frank-sc/F3F-Tool-V2/wiki)
 
 ## Status
 The tool in Version 2.0 is functionally identical with V1.4 (in Repository [**F3F-Tool-V1**](https://github.com/frank-sc/F3F-Tool-V1), but memory optimization for Generation 1 transmitters was partly removed. Further development on this tool unfortunately can not be done for the old transmitters.
